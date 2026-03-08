@@ -1,0 +1,180 @@
+{
+  "common": {
+    "appName": "BakeryOS",
+    "bakeryName": "Brown Sugar Bakery",
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "back": "Back",
+    "next": "Next",
+    "close": "Close",
+    "search": "Search...",
+    "noResults": "No results found",
+    "error": "Something went wrong",
+    "retry": "Try Again",
+    "offline": "You are offline",
+    "print": "Print",
+    "confirm": "Confirm",
+    "add": "Add"
+  },
+  "splash": {
+    "tagline": "Life Is Sweet"
+  },
+  "zone": {
+    "title": "Select Your Zone",
+    "subtitle": "Where are you working today?",
+    "foh": {
+      "name": "Front of House",
+      "description": "Customer service, register, display cases"
+    },
+    "middle": {
+      "name": "Middle",
+      "description": "Decorating, packaging, assembly"
+    },
+    "boh": {
+      "name": "Back of House",
+      "description": "Baking, prep, kitchen operations"
+    },
+    "activeStaff": "{count} staff active"
+  },
+  "role": {
+    "title": "Select Your Role",
+    "staff": {
+      "name": "Staff",
+      "description": "View and complete your shift tasks"
+    },
+    "manager": {
+      "name": "Shift Manager",
+      "description": "Manage team, tasks, and operations"
+    }
+  },
+  "pin": {
+    "title": "Enter Your PIN",
+    "subtitle": "4-digit code",
+    "wrong": "Incorrect PIN. Try again.",
+    "clear": "Clear",
+    "delete": "Delete"
+  },
+  "dashboard": {
+    "greeting": "Hello, {name}!",
+    "shift": {
+      "opening": "Opening Shift",
+      "mid": "Mid Shift",
+      "closing": "Closing Shift"
+    },
+    "tasks": "Tasks",
+    "sops": "SOPs",
+    "profile": "Profile",
+    "progress": "{completed} of {total} tasks done",
+    "markComplete": "Mark Complete",
+    "takePhoto": "Take Photo",
+    "photoRequired": "Photo required",
+    "viewSOP": "View Steps",
+    "streak": "{count} day streak",
+    "overdue": "Overdue",
+    "critical": "Critical"
+  },
+  "manager": {
+    "overview": "Overview",
+    "myTeam": "My Team",
+    "allTasks": "All Tasks",
+    "zoneHealth": "Zone Health",
+    "completion": "{percent}% complete",
+    "staffActive": "{count} active",
+    "alerts": "Alerts",
+    "noAlerts": "All clear! No alerts right now.",
+    "overdueTask": "{task} is overdue in {zone}",
+    "lastActive": "Last active {time}",
+    "tasksOverdue": "{count} overdue",
+    "staff": {
+      "addStaff": "Add Staff",
+      "editStaff": "Edit Staff",
+      "firstName": "First Name",
+      "lastName": "Last Name",
+      "displayName": "Display Name",
+      "pin": "PIN",
+      "confirmPin": "Confirm PIN",
+      "pinHint": "4-digit numeric code",
+      "pinLeaveBlank": "Leave blank to keep current PIN",
+      "role": "Role",
+      "roleStaff": "Staff",
+      "roleManager": "Manager",
+      "language": "Language",
+      "deactivate": "Deactivate",
+      "reactivate": "Reactivate",
+      "inactive": "Inactive",
+      "deactivateConfirm": "Are you sure you want to deactivate {name}? They will no longer be able to log in.",
+      "reactivateConfirm": "Reactivate {name}? They will be able to log in again.",
+      "pinRequired": "PIN is required",
+      "pinFormat": "PIN must be exactly 4 digits",
+      "pinMismatch": "PINs do not match",
+      "firstNameRequired": "First name is required",
+      "lastNameRequired": "Last name is required",
+      "saved": "Staff member saved",
+      "noStaff": "No staff members in this zone"
+    }
+  },
+  "sop": {
+    "title": "Standard Operating Procedures",
+    "steps": "Steps",
+    "step": "Step {number}",
+    "critical": "Critical Task",
+    "photoRequired": "Photo Required",
+    "allZones": "All Zones",
+    "editor": {
+      "title": "SOP Editor",
+      "nameEn": "Name (English)",
+      "nameEs": "Name (Spanish)",
+      "descriptionEn": "Description (English)",
+      "descriptionEs": "Description (Spanish)",
+      "addStep": "Add Step",
+      "saveDraft": "Save Draft",
+      "publish": "Publish",
+      "category": "Category",
+      "modeText": "Text",
+      "modeVoice": "Voice",
+      "modePhoto": "Photo",
+      "voiceListening": "Listening...",
+      "voiceUnsupported": "Voice input not supported in this browser",
+      "voiceTapToSpeak": "Tap mic to speak",
+      "photoCapture": "Take Photo",
+      "photoUpload": "Upload Image",
+      "photoExtract": "Extract Text",
+      "photoExtracting": "Extracting text...",
+      "photoUseText": "Use This Text",
+      "photoSelectField": "Assign to field",
+      "photoFieldNameEn": "SOP Name (EN)",
+      "photoFieldNameEs": "SOP Name (ES)",
+      "photoFieldDescEn": "SOP Description (EN)",
+      "photoFieldDescEs": "SOP Description (ES)",
+      "photoFieldStepTitle": "Step {number} Title",
+      "photoFieldStepDesc": "Step {number} Description",
+      "photoPreview": "Preview",
+      "photoNoText": "No text detected. Try a clearer image.",
+      "modeAI": "AI",
+      "aiTitle": "AI SOP Assistant",
+      "aiGreeting": "Hi! I'll help you create an SOP for your zone. What procedure would you like to document?",
+      "aiPlaceholder": "Describe the procedure...",
+      "aiGenerate": "Generate SOP",
+      "aiGenerating": "Generating your SOP...",
+      "aiError": "AI service unavailable. Please try again.",
+      "aiDismiss": "Dismiss",
+      "schedule": "Schedule",
+      "everyDay": "Every Day",
+      "sun": "S",
+      "mon": "M",
+      "tue": "T",
+      "wed": "W",
+      "thu": "T",
+      "fri": "F",
+      "sat": "S"
+    }
+  },
+  "language": {
+    "en": "English",
+    "es": "Español",
+    "toggle": "Language"
+  }
+}

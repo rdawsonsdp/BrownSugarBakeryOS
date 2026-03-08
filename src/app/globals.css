@@ -1,0 +1,149 @@
+@import "tailwindcss";
+
+@theme {
+  /* BSB Brand Colors — from official brand guide */
+  --color-brown: #570522;
+  --color-brown-light: #7A1B3A;
+  --color-gold: #ba5b28;
+  --color-gold-light: #e68c3b;
+  --color-cream: #FFF8F0;
+  --color-cream-dark: #F5EDE0;
+  --color-red: #e6432b;
+  --color-red-light: #f06850;
+  --color-blush: #facac1;
+  --color-caramel: #ba5b28;
+  --color-amber: #e68c3b;
+  --color-wine: #570522;
+  --color-wine-light: #7A1B3A;
+
+  /* Zone Colors */
+  --color-zone-foh: #e68c3b;
+  --color-zone-foh-light: #f0a85c;
+  --color-zone-foh-dark: #ba5b28;
+  --color-zone-middle: #C06B3E;
+  --color-zone-middle-light: #D4875C;
+  --color-zone-middle-dark: #A05A32;
+  --color-zone-boh: #570522;
+  --color-zone-boh-light: #7A1B3A;
+  --color-zone-boh-dark: #3D0118;
+
+  /* Status Colors */
+  --color-success: #22C55E;
+  --color-warning: #F59E0B;
+  --color-info: #3B82F6;
+
+  /* Typography */
+  --font-arsenal: var(--font-arsenal-google);
+  --font-noto: var(--font-noto-sans-google);
+
+  /* Animations */
+  --animate-shake: shake 0.5s ease-in-out;
+  --animate-dot-fill: dot-fill 0.3s ease-out forwards;
+  --animate-glow-green: glow-green 0.6s ease-out;
+  --animate-shimmer: shimmer 2s linear infinite;
+  --animate-bounce-in: bounce-in 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  --animate-float-up: float-up 2s ease-out forwards;
+  --animate-pulse-slow: pulse 3s ease-in-out infinite;
+  --animate-fade-in: fade-in 0.5s ease-out;
+
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+    20%, 40%, 60%, 80% { transform: translateX(4px); }
+  }
+
+  @keyframes dot-fill {
+    0% { transform: scale(0.5); opacity: 0; }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  @keyframes glow-green {
+    0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+    50% { box-shadow: 0 0 20px 10px rgba(34, 197, 94, 0.3); }
+    100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+  }
+
+  @keyframes shimmer {
+    0% { background-position: -200% center; }
+    100% { background-position: 200% center; }
+  }
+
+  @keyframes bounce-in {
+    0% { transform: scale(0); opacity: 0; }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  @keyframes float-up {
+    0% { transform: translateY(100%) scale(0.5); opacity: 0; }
+    20% { opacity: 1; }
+    80% { opacity: 0.8; }
+    100% { transform: translateY(-100vh) scale(0.2); opacity: 0; }
+  }
+
+  @keyframes fade-in {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+  }
+}
+
+/* Base Styles */
+html {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-noto), system-ui, -apple-system, sans-serif;
+  background-color: var(--color-cream);
+  color: var(--color-brown);
+  min-height: 100dvh;
+  overscroll-behavior: none;
+  padding-bottom: 40px;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-arsenal), Georgia, serif;
+}
+
+/* PWA safe areas */
+.safe-top { padding-top: env(safe-area-inset-top); }
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+
+/* Touch targets */
+.touch-target {
+  min-height: 48px;
+  min-width: 48px;
+}
+
+.touch-target-lg {
+  min-height: 82px;
+  min-width: 82px;
+}
+
+/* Noise texture overlay */
+.noise-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Print styles */
+@media print {
+  .no-print { display: none !important; }
+  .print-only { display: block !important; }
+  body { background: white; color: black; }
+}
+
+.print-only { display: none; }
+
+/* Scrollbar styling */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-brown); border-radius: 2px; opacity: 0.3; }

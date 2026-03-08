@@ -1,0 +1,180 @@
+{
+  "common": {
+    "appName": "BakeryOS",
+    "bakeryName": "Brown Sugar Bakery",
+    "loading": "Cargando...",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "back": "Atrás",
+    "next": "Siguiente",
+    "close": "Cerrar",
+    "search": "Buscar...",
+    "noResults": "No se encontraron resultados",
+    "error": "Algo salió mal",
+    "retry": "Intentar de Nuevo",
+    "offline": "Estás sin conexión",
+    "print": "Imprimir",
+    "confirm": "Confirmar",
+    "add": "Agregar"
+  },
+  "splash": {
+    "tagline": "La Vida Es Dulce"
+  },
+  "zone": {
+    "title": "Selecciona Tu Zona",
+    "subtitle": "¿Dónde trabajas hoy?",
+    "foh": {
+      "name": "Frente",
+      "description": "Servicio al cliente, caja, vitrinas"
+    },
+    "middle": {
+      "name": "Medio",
+      "description": "Decoración, empaque, ensamblaje"
+    },
+    "boh": {
+      "name": "Cocina",
+      "description": "Horneado, preparación, operaciones de cocina"
+    },
+    "activeStaff": "{count} personal activo"
+  },
+  "role": {
+    "title": "Selecciona Tu Rol",
+    "staff": {
+      "name": "Personal",
+      "description": "Ver y completar las tareas de tu turno"
+    },
+    "manager": {
+      "name": "Gerente de Turno",
+      "description": "Gestionar equipo, tareas y operaciones"
+    }
+  },
+  "pin": {
+    "title": "Ingresa Tu PIN",
+    "subtitle": "Código de 4 dígitos",
+    "wrong": "PIN incorrecto. Intenta de nuevo.",
+    "clear": "Borrar",
+    "delete": "Eliminar"
+  },
+  "dashboard": {
+    "greeting": "¡Hola, {name}!",
+    "shift": {
+      "opening": "Turno de Apertura",
+      "mid": "Turno Medio",
+      "closing": "Turno de Cierre"
+    },
+    "tasks": "Tareas",
+    "sops": "POEs",
+    "profile": "Perfil",
+    "progress": "{completed} de {total} tareas completadas",
+    "markComplete": "Marcar Completa",
+    "takePhoto": "Tomar Foto",
+    "photoRequired": "Foto requerida",
+    "viewSOP": "Ver Pasos",
+    "streak": "Racha de {count} días",
+    "overdue": "Atrasada",
+    "critical": "Crítica"
+  },
+  "manager": {
+    "overview": "Resumen",
+    "myTeam": "Mi Equipo",
+    "allTasks": "Todas las Tareas",
+    "zoneHealth": "Salud de Zona",
+    "completion": "{percent}% completado",
+    "staffActive": "{count} activos",
+    "alerts": "Alertas",
+    "noAlerts": "¡Todo bien! No hay alertas.",
+    "overdueTask": "{task} está atrasada en {zone}",
+    "lastActive": "Última actividad {time}",
+    "tasksOverdue": "{count} atrasadas",
+    "staff": {
+      "addStaff": "Agregar Personal",
+      "editStaff": "Editar Personal",
+      "firstName": "Nombre",
+      "lastName": "Apellido",
+      "displayName": "Nombre para Mostrar",
+      "pin": "PIN",
+      "confirmPin": "Confirmar PIN",
+      "pinHint": "Código numérico de 4 dígitos",
+      "pinLeaveBlank": "Dejar en blanco para mantener el PIN actual",
+      "role": "Rol",
+      "roleStaff": "Personal",
+      "roleManager": "Gerente",
+      "language": "Idioma",
+      "deactivate": "Desactivar",
+      "reactivate": "Reactivar",
+      "inactive": "Inactivo",
+      "deactivateConfirm": "¿Estás seguro de que quieres desactivar a {name}? Ya no podrá iniciar sesión.",
+      "reactivateConfirm": "¿Reactivar a {name}? Podrá iniciar sesión de nuevo.",
+      "pinRequired": "El PIN es obligatorio",
+      "pinFormat": "El PIN debe ser exactamente 4 dígitos",
+      "pinMismatch": "Los PINs no coinciden",
+      "firstNameRequired": "El nombre es obligatorio",
+      "lastNameRequired": "El apellido es obligatorio",
+      "saved": "Personal guardado",
+      "noStaff": "No hay personal en esta zona"
+    }
+  },
+  "sop": {
+    "title": "Procedimientos Operativos Estándar",
+    "steps": "Pasos",
+    "step": "Paso {number}",
+    "critical": "Tarea Crítica",
+    "photoRequired": "Foto Requerida",
+    "allZones": "Todas las Zonas",
+    "editor": {
+      "title": "Editor de POE",
+      "nameEn": "Nombre (Inglés)",
+      "nameEs": "Nombre (Español)",
+      "descriptionEn": "Descripción (Inglés)",
+      "descriptionEs": "Descripción (Español)",
+      "addStep": "Agregar Paso",
+      "saveDraft": "Guardar Borrador",
+      "publish": "Publicar",
+      "category": "Categoría",
+      "modeText": "Texto",
+      "modeVoice": "Voz",
+      "modePhoto": "Foto",
+      "voiceListening": "Escuchando...",
+      "voiceUnsupported": "Entrada de voz no compatible en este navegador",
+      "voiceTapToSpeak": "Toca el micrófono para hablar",
+      "photoCapture": "Tomar Foto",
+      "photoUpload": "Subir Imagen",
+      "photoExtract": "Extraer Texto",
+      "photoExtracting": "Extrayendo texto...",
+      "photoUseText": "Usar Este Texto",
+      "photoSelectField": "Asignar a campo",
+      "photoFieldNameEn": "Nombre del POE (EN)",
+      "photoFieldNameEs": "Nombre del POE (ES)",
+      "photoFieldDescEn": "Descripción del POE (EN)",
+      "photoFieldDescEs": "Descripción del POE (ES)",
+      "photoFieldStepTitle": "Título del Paso {number}",
+      "photoFieldStepDesc": "Descripción del Paso {number}",
+      "photoPreview": "Vista Previa",
+      "photoNoText": "No se detectó texto. Intenta con una imagen más clara.",
+      "modeAI": "IA",
+      "aiTitle": "Asistente IA para POE",
+      "aiGreeting": "¡Hola! Te ayudaré a crear un POE para tu zona. ¿Qué procedimiento quieres documentar?",
+      "aiPlaceholder": "Describe el procedimiento...",
+      "aiGenerate": "Generar POE",
+      "aiGenerating": "Generando tu POE...",
+      "aiError": "Servicio de IA no disponible. Intenta de nuevo.",
+      "aiDismiss": "Cerrar",
+      "schedule": "Horario",
+      "everyDay": "Todos los días",
+      "sun": "D",
+      "mon": "L",
+      "tue": "M",
+      "wed": "M",
+      "thu": "J",
+      "fri": "V",
+      "sat": "S"
+    }
+  },
+  "language": {
+    "en": "English",
+    "es": "Español",
+    "toggle": "Idioma"
+  }
+}
