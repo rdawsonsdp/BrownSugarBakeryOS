@@ -256,28 +256,16 @@ export function SOPEditor({ sop, zoneId, onSave, onCancel }: SOPEditorProps) {
           {t('modePhoto')}
         </button>
         <button
-          onClick={() => setInputMode('ai')}
-          className={cn(
-            'flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-bold transition-colors',
-            inputMode === 'ai'
-              ? 'text-cream shadow-sm'
-              : 'text-gold hover:text-gold-light'
-          )}
-          style={inputMode === 'ai' ? { background: 'linear-gradient(to right, #ba5b28, #570522)' } : undefined}
+          disabled
+          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-bold transition-colors text-brown/20 cursor-not-allowed"
+          title="AI mode is temporarily disabled"
         >
           <Sparkles className="w-4 h-4" />
           {t('modeAI')}
         </button>
       </div>
 
-      {/* AI Chat mode */}
-      {inputMode === 'ai' && zone && (
-        <AIChat
-          zone={{ name_en: zone.name_en, name_es: zone.name_es, slug: zone.slug }}
-          onGenerated={handleAIGenerated}
-          onCancel={() => setInputMode('text')}
-        />
-      )}
+      {/* AI Chat mode — temporarily disabled */}
 
       {/* Standard form fields — hidden when AI mode is active */}
       {inputMode !== 'ai' && (<>

@@ -82,6 +82,12 @@ function parseGeneratedSOP(text: string): AIGeneratedSOP | null {
 }
 
 export async function POST(request: NextRequest) {
+  // AI SOP creation is temporarily disabled
+  return NextResponse.json(
+    { error: 'AI SOP creation is temporarily disabled' },
+    { status: 403 }
+  )
+
   const body = await request.json() as AIChatRequest
   const { messages, zone, locale, generate } = body
 
