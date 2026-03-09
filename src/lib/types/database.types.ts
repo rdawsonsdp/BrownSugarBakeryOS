@@ -74,6 +74,7 @@ export interface SOP {
   is_active: boolean
   status: SOPStatus
   version: number
+  assigned_staff_id: string | null
   days_of_week: number[] | null
   created_by: string | null
   created_at: string
@@ -154,6 +155,7 @@ export interface TaskCompletionWithTemplate extends TaskCompletion {
 
 export interface SOPWithSteps extends SOP {
   sop_steps: SOPStep[]
+  assigned_staff?: { id: string; display_name: string; role_id: string } | null
 }
 
 export interface StaffWithRole extends Staff {

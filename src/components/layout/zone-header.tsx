@@ -2,13 +2,15 @@
 
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, ChevronDown } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useLocaleStore } from '@/lib/stores/locale-store'
 import { LanguageToggle } from './language-toggle'
+import { ZoneSwitcher } from './zone-switcher'
 import { cn } from '@/lib/utils/cn'
 
 interface ZoneHeaderProps {
+  zoneId?: string
   zoneName_en: string
   zoneName_es: string
   zoneColor: string
@@ -18,6 +20,7 @@ interface ZoneHeaderProps {
   shiftType?: string
   showBack?: boolean
   backPath?: string
+  isManager?: boolean
 }
 
 const colorMap: Record<string, string> = {
@@ -38,6 +41,7 @@ function useCurrentTime() {
 }
 
 export function ZoneHeader({
+  zoneId,
   zoneName_en,
   zoneName_es,
   zoneColor,
@@ -47,12 +51,14 @@ export function ZoneHeader({
   shiftType,
   showBack = false,
   backPath,
+  isManager = false,
 }: ZoneHeaderProps) {
   const router = useRouter()
   const { locale } = useLocaleStore()
   const zoneName = locale === 'es' ? zoneName_es : zoneName_en
   const bgClass = colorMap[zoneColor] || 'bg-brown'
   const now = useCurrentTime()
+  const [switcherOpen, setSwitcherOpen] = useState(false)
 
   const dayDateString = now.toLocaleDateString('en-US', {
     weekday: 'long',
@@ -69,84 +75,106 @@ export function ZoneHeader({
   })
 
   return (
-    <div className={cn('relative text-white px-4 pt-4 pb-5 safe-top', bgClass)}>
-      {/* Back button + language toggle row */}
-      <div className="flex items-center justify-between mb-2">
-        <div>
-          {showBack && (
-            <button
-              onClick={() => backPath ? router.push(backPath) : router.back()}
-              className="p-2 -ml-2 rounded-lg hover:bg-white/10 transition-colors touch-target"
+    <>
+      <div className={cn('relative text-white px-4 pt-4 pb-5 safe-top transition-colors duration-500', bgClass)}>
+        {/* Back button + language toggle row */}
+        <div className="flex items-center justify-between mb-2">
+          <div>
+            {showBack && (
+              <button
+                onClick={() => backPath ? router.push(backPath) : router.back()}
+                className="p-2 -ml-2 rounded-lg hover:bg-white/10 transition-colors touch-target"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+            )}
+          </div>
+          <LanguageToggle className="bg-white/20 border-white/20 text-white" />
+        </div>
+
+        {/* Main banner: logo left, content center */}
+        <div className="flex items-center gap-4">
+          {/* Logo — full height of banner */}
+          <div className="flex-shrink-0">
+            <Image
+              src="/icons/bsb-logo-coin.svg"
+              alt="Brown Sugar Bakery"
+              width={90}
+              height={90}
+              className="rounded-full"
+            />
+          </div>
+
+          {/* Center content */}
+          <div className="flex-1 text-center">
+            <h1
+              className="text-xl font-bold tracking-wide uppercase"
+              style={{ fontFamily: 'var(--font-arsenal), Georgia, serif' }}
             >
-              <ArrowLeft className="w-5 h-5" />
+              Brown Sugar Bakery
+            </h1>
+
+            {/* Day and Date */}
+            <p className="text-xs font-bold text-white/90 mt-1 tracking-wide">
+              {dayDateString}
+            </p>
+
+            {/* Time */}
+            <p className="text-2xl font-bold mt-1 tracking-tight tabular-nums">
+              {timeString}
+            </p>
+          </div>
+        </div>
+
+        {/* Breadcrumb bar */}
+        <div className="flex items-center justify-center gap-1.5 mt-3 text-xs text-white/80 font-medium">
+          {isManager ? (
+            <button
+              onClick={() => setSwitcherOpen(true)}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/20 hover:bg-white/30 transition-colors"
+              aria-label="Switch zone"
+            >
+              <span>{zoneName}</span>
+              <ChevronDown className="w-3 h-3" />
             </button>
+          ) : (
+            <span>{zoneName}</span>
+          )}
+          {roleName && (
+            <>
+              <span className="text-white/40">/</span>
+              <span>{roleName}</span>
+            </>
+          )}
+          {shiftType && (
+            <>
+              <span className="text-white/40">/</span>
+              <span className="capitalize">{shiftType}</span>
+            </>
+          )}
+          {staffName && (
+            <>
+              <span className="text-white/40">·</span>
+              <span className="font-semibold text-white/90">{staffName}</span>
+            </>
+          )}
+          {streak !== undefined && streak > 0 && (
+            <>
+              <span className="text-white/40">·</span>
+              <span className="font-semibold">🔥 {streak}</span>
+            </>
           )}
         </div>
-        <LanguageToggle className="bg-white/20 border-white/20 text-white" />
       </div>
 
-      {/* Main banner: logo left, content center */}
-      <div className="flex items-center gap-4">
-        {/* Logo — full height of banner */}
-        <div className="flex-shrink-0">
-          <Image
-            src="/icons/bsb-logo-coin.svg"
-            alt="Brown Sugar Bakery"
-            width={90}
-            height={90}
-            className="rounded-full"
-          />
-        </div>
-
-        {/* Center content */}
-        <div className="flex-1 text-center">
-          <h1
-            className="text-xl font-bold tracking-wide uppercase"
-            style={{ fontFamily: 'var(--font-arsenal), Georgia, serif' }}
-          >
-            Brown Sugar Bakery
-          </h1>
-
-          {/* Day and Date */}
-          <p className="text-xs font-bold text-white/90 mt-1 tracking-wide">
-            {dayDateString}
-          </p>
-
-          {/* Time */}
-          <p className="text-2xl font-bold mt-1 tracking-tight tabular-nums">
-            {timeString}
-          </p>
-        </div>
-      </div>
-
-      {/* Breadcrumb bar */}
-      <div className="flex items-center justify-center gap-1.5 mt-3 text-xs text-white/80 font-medium">
-        <span>{zoneName}</span>
-        {roleName && (
-          <>
-            <span className="text-white/40">/</span>
-            <span>{roleName}</span>
-          </>
-        )}
-        {shiftType && (
-          <>
-            <span className="text-white/40">/</span>
-            <span className="capitalize">{shiftType}</span>
-          </>
-        )}
-        {staffName && (
-          <>
-            <span className="text-white/40">·</span>
-            <span className="font-semibold text-white/90">{staffName}</span>
-          </>
-        )}
-        {streak !== undefined && streak > 0 && (
-          <>
-            <span className="text-white/40">·</span>
-            <span className="font-semibold">🔥 {streak}</span>
-          </>
-        )}
-      </div>
-    </div>
+      {/* Zone switcher bottom sheet (manager only) */}
+      {isManager && zoneId && (
+        <ZoneSwitcher
+          open={switcherOpen}
+          onClose={() => setSwitcherOpen(false)}
+          currentZoneId={zoneId}
+        />
+      )}
+    </>
   )
 }

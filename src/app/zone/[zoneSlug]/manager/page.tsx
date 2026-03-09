@@ -50,6 +50,7 @@ export default function ManagerDashboardPage() {
       className="min-h-dvh bg-cream pb-6"
     >
       <ZoneHeader
+        zoneId={zone.id}
         zoneName_en={zone.name_en}
         zoneName_es={zone.name_es}
         zoneColor={zone.color}
@@ -57,6 +58,7 @@ export default function ManagerDashboardPage() {
         staffName={staff.display_name}
         streak={staff.streak_count}
         shiftType={td(`shift.${shift.shift_type}` as 'shift.opening')}
+        isManager
       />
 
       <div className="max-w-lg mx-auto">

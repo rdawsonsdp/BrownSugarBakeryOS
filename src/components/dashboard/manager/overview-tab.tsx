@@ -4,13 +4,15 @@ import { useTranslations } from 'next-intl'
 import { AnimatePresence } from 'framer-motion'
 import { useZones } from '@/lib/hooks/use-zones'
 import { useActiveShifts } from '@/lib/hooks/use-shift'
+import { useZoneStaff } from '@/lib/hooks/use-staff'
+import { useSOPs } from '@/lib/hooks/use-sops'
 import { ZoneHealthCard } from './zone-health-card'
 import { AlertCard } from './alert-card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { useState } from 'react'
-import { CheckCircle2, Circle } from 'lucide-react'
+import { CheckCircle2, Circle, User } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 
 interface OverviewTabProps {
@@ -21,6 +23,8 @@ export function OverviewTab({ zoneId }: OverviewTabProps) {
   const t = useTranslations('manager')
   const { data: zones, isLoading: zonesLoading } = useZones()
   const { data: activeShifts } = useActiveShifts()
+  const { data: zoneStaff } = useZoneStaff(zoneId)
+  const { data: zoneSops } = useSOPs(zoneId)
   const [dismissedAlerts, setDismissedAlerts] = useState<string[]>([])
 
   // Fetch today's task completions for the current zone
@@ -64,20 +68,37 @@ export function OverviewTab({ zoneId }: OverviewTabProps) {
     const percent = total === 0 ? 0 : Math.round((completed / total) * 100)
     const staffCount = activeShifts?.filter((s) => s.zone_id === zone.id).length || 0
 
-    return { zone, total, completed, percent, staffCount, completions: zoneCompletions }
+    return { zone, total, completed, percent, staffCount }
   })
 
-  // Get zone-specific completions for task list
-  const zoneCompletions = allCompletions?.filter(
-    (c) => c.task_template?.zone_id === zoneId
-  ) || []
+  // Group SOPs by assigned role/staff
+  const roleGroups: { roleLabel: string; staffId: string | null; sops: typeof zoneSops }[] = []
 
-  // Sort: incomplete first, then completed
-  const sortedTasks = [...zoneCompletions].sort((a, b) => {
-    if (a.status === 'completed' && b.status !== 'completed') return 1
-    if (a.status !== 'completed' && b.status === 'completed') return -1
-    return 0
-  })
+  if (zoneSops) {
+    const grouped = new Map<string, { label: string; staffId: string | null; sops: typeof zoneSops }>()
+
+    for (const sop of zoneSops) {
+      const key = sop.assigned_staff?.id || '__unassigned__'
+      const label = sop.assigned_staff?.display_name || 'Unassigned'
+
+      if (!grouped.has(key)) {
+        grouped.set(key, { label, staffId: sop.assigned_staff?.id || null, sops: [] })
+      }
+      grouped.get(key)!.sops!.push(sop)
+    }
+
+    // Put assigned roles first, unassigned last
+    const entries = Array.from(grouped.values())
+    entries.sort((a, b) => {
+      if (a.staffId === null) return 1
+      if (b.staffId === null) return -1
+      return a.label.localeCompare(b.label)
+    })
+
+    for (const entry of entries) {
+      roleGroups.push({ roleLabel: entry.label, staffId: entry.staffId, sops: entry.sops })
+    }
+  }
 
   // Find overdue critical tasks for this zone only
   const overdueAlerts = allCompletions?.filter((c) => {
@@ -112,43 +133,72 @@ export function OverviewTab({ zoneId }: OverviewTabProps) {
         </div>
       </div>
 
-      {/* Task List */}
-      {sortedTasks.length > 0 && (
+      {/* Tasks organized by Role */}
+      {roleGroups.length > 0 && (
         <div>
           <h2 className="text-sm font-semibold text-brown/60 uppercase tracking-wider mb-3">
             {t('currentTasks')}
           </h2>
-          <div className="space-y-2">
-            {sortedTasks.map((task) => {
-              const isCompleted = task.status === 'completed'
+          <div className="space-y-4">
+            {roleGroups.map((group) => {
+              const totalInGroup = group.sops?.length || 0
+              // Check completion status from allCompletions for these SOPs
+              const sopIds = new Set(group.sops?.map((s) => s.id) || [])
+
               return (
-                <div
-                  key={task.id}
-                  className={cn(
-                    'flex items-center gap-3 p-3 rounded-xl border transition-colors',
-                    isCompleted
-                      ? 'bg-brown/5 border-brown/5'
-                      : 'bg-white border-brown/10'
-                  )}
-                >
-                  {isCompleted ? (
-                    <CheckCircle2 className="w-5 h-5 text-success flex-shrink-0" />
-                  ) : (
-                    <Circle className="w-5 h-5 text-brown/20 flex-shrink-0" />
-                  )}
-                  <span
-                    className={cn(
-                      'text-sm flex-1',
-                      isCompleted
-                        ? 'line-through text-brown/30'
-                        : 'text-brown font-medium'
-                    )}
-                  >
-                    {task.task_template?.name_en || 'Unknown Task'}
-                  </span>
-                  {task.task_template?.is_critical && !isCompleted && (
-                    <span className="text-[10px] font-bold text-red uppercase">Critical</span>
-                  )}
+                <div key={group.staffId || 'unassigned'} className="space-y-1.5">
+                  {/* Role header */}
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-full bg-brown/10 flex items-center justify-center">
+                      <User className="w-3.5 h-3.5 text-brown/40" />
+                    </div>
+                    <span className="text-xs font-bold text-brown">
+                      {group.roleLabel}
+                    </span>
+                    <span className="text-[10px] text-brown/40">
+                      {totalInGroup} {totalInGroup === 1 ? 'task' : 'tasks'}
+                    </span>
+                  </div>
+
+                  {/* Tasks under this role */}
+                  {group.sops?.map((sop) => {
+                    // Find if there's a completion for this SOP
+                    const completion = allCompletions?.find(
+                      (c) => c.task_template?.sop_id === sop.id
+                    )
+                    const isCompleted = completion?.status === 'completed'
+
+                    return (
+                      <div
+                        key={sop.id}
+                        className={cn(
+                          'flex items-center gap-3 p-3 rounded-xl border transition-colors ml-8',
+                          isCompleted
+                            ? 'bg-brown/5 border-brown/5'
+                            : 'bg-white border-brown/10'
+                        )}
+                      >
+                        {isCompleted ? (
+                          <CheckCircle2 className="w-5 h-5 text-success flex-shrink-0" />
+                        ) : (
+                          <Circle className="w-5 h-5 text-brown/20 flex-shrink-0" />
+                        )}
+                        <span
+                          className={cn(
+                            'text-sm flex-1',
+                            isCompleted
+                              ? 'line-through text-brown/30'
+                              : 'text-brown font-medium'
+                          )}
+                        >
+                          {sop.name_en}
+                        </span>
+                        {sop.is_critical && !isCompleted && (
+                          <span className="text-[10px] font-bold text-red uppercase">Critical</span>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
               )
             })}

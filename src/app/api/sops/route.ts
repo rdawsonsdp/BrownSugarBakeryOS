@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
 
   let query = supabase
     .from('sops')
-    .select('*, sop_steps(*)')
+    .select('*, sop_steps(*), assigned_staff:staff!sops_assigned_staff_id_fkey(id, display_name, role_id)')
     .order('created_at', { ascending: false })
 
   if (library === 'true') {
@@ -132,15 +132,20 @@ export async function PUT(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   const supabase = await createClient()
   const body = await request.json()
-  const { id, is_active } = body
+  const { id, ...fields } = body
 
   if (!id) {
     return NextResponse.json({ error: 'SOP id required' }, { status: 400 })
   }
 
+  // Allow updating: is_active, assigned_staff_id, etc.
+  const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() }
+  if ('is_active' in fields) updateData.is_active = fields.is_active
+  if ('assigned_staff_id' in fields) updateData.assigned_staff_id = fields.assigned_staff_id
+
   const { data, error } = await supabase
     .from('sops')
-    .update({ is_active, updated_at: new Date().toISOString() })
+    .update(updateData)
     .eq('id', id)
     .select()
     .single()
