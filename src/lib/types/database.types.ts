@@ -48,12 +48,13 @@ export interface Role {
 
 export interface Staff {
   id: string
-  first_name: string
-  last_name: string
+  first_name: string | null
+  last_name: string | null
   display_name: string
   pin_hash: string
   role_id: string
   zone_id: string
+  role_sequence: number | null
   preferred_language: 'en' | 'es'
   streak_count: number
   last_login_date: string | null

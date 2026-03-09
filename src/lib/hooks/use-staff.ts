@@ -5,11 +5,12 @@ import { useAuthStore } from '@/lib/stores/auth-store'
 
 interface StaffMember {
   id: string
-  first_name: string
-  last_name: string
+  first_name: string | null
+  last_name: string | null
   display_name: string
   role_id: string
   zone_id: string
+  role_sequence: number | null
   preferred_language: 'en' | 'es'
   streak_count: number
   is_active: boolean
@@ -42,9 +43,8 @@ export function useCreateStaff() {
 
   return useMutation({
     mutationFn: async (data: {
-      first_name: string
-      last_name: string
-      display_name?: string
+      first_name?: string
+      last_name?: string
       pin: string
       role_id: string
       zone_id: string

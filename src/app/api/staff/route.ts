@@ -1,6 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
+async function getNextRoleSequence(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  roleId: string,
+  zoneId: string
+): Promise<number> {
+  const { data, error } = await supabase
+    .from('staff')
+    .select('role_sequence')
+    .eq('role_id', roleId)
+    .eq('zone_id', zoneId)
+    .order('role_sequence', { ascending: false })
+    .limit(1)
+
+  if (error || !data || data.length === 0) return 1
+  return (data[0].role_sequence ?? 0) + 1
+}
+
+async function generateDisplayName(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  roleId: string,
+  zoneId: string,
+  sequence: number
+): Promise<string> {
+  const { data: role } = await supabase
+    .from('roles')
+    .select('name_en')
+    .eq('id', roleId)
+    .single()
+
+  const roleName = role?.name_en ?? 'Staff'
+  return `${roleName} ${sequence}`
+}
+
 export async function GET(request: NextRequest) {
   const supabase = await createClient()
   const { searchParams } = new URL(request.url)
@@ -31,10 +64,10 @@ export async function POST(request: NextRequest) {
   const supabase = await createClient()
   const body = await request.json()
 
-  const { first_name, last_name, display_name, pin, role_id, zone_id, preferred_language } = body
+  const { pin, role_id, zone_id, preferred_language, first_name, last_name } = body
 
-  if (!first_name || !last_name || !pin || !role_id || !zone_id) {
-    return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+  if (!pin || !role_id || !zone_id) {
+    return NextResponse.json({ error: 'Missing required fields: pin, role_id, zone_id' }, { status: 400 })
   }
 
   if (!/^\d{4}$/.test(pin)) {
@@ -48,17 +81,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to hash PIN' }, { status: 500 })
   }
 
-  const finalDisplayName = display_name || `${first_name} ${last_name.charAt(0)}.`
+  // Auto-assign role sequence number and generate display name
+  const roleSequence = await getNextRoleSequence(supabase, role_id, zone_id)
+  const displayName = await generateDisplayName(supabase, role_id, zone_id, roleSequence)
 
   const { data, error } = await supabase
     .from('staff')
     .insert({
-      first_name,
-      last_name,
-      display_name: finalDisplayName,
+      first_name: first_name || null,
+      last_name: last_name || null,
+      display_name: displayName,
       pin_hash: hashedPin,
       role_id,
       zone_id,
+      role_sequence: roleSequence,
       preferred_language: preferred_language || 'en',
       is_active: true,
       streak_count: 0,
@@ -78,7 +114,7 @@ export async function PUT(request: NextRequest) {
   const supabase = await createClient()
   const body = await request.json()
 
-  const { id, pin, ...updates } = body
+  const { id, pin, role_id, ...updates } = body
 
   if (!id) {
     return NextResponse.json({ error: 'Staff id is required' }, { status: 400 })
@@ -97,6 +133,26 @@ export async function PUT(request: NextRequest) {
     }
 
     updates.pin_hash = hashedPin
+  }
+
+  // If role is changing, assign new sequence number and regenerate display name
+  if (role_id) {
+    // Get current staff to check if role actually changed
+    const { data: current } = await supabase
+      .from('staff')
+      .select('role_id, zone_id')
+      .eq('id', id)
+      .single()
+
+    if (current && current.role_id !== role_id) {
+      const roleSequence = await getNextRoleSequence(supabase, role_id, current.zone_id)
+      const displayName = await generateDisplayName(supabase, role_id, current.zone_id, roleSequence)
+      updates.role_id = role_id
+      updates.role_sequence = roleSequence
+      updates.display_name = displayName
+    } else {
+      updates.role_id = role_id
+    }
   }
 
   const { data, error } = await supabase

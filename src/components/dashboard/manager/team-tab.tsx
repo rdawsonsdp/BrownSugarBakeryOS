@@ -17,9 +17,9 @@ import { formatRelative } from '@/lib/utils/format'
 
 interface StaffFormData {
   id?: string
-  first_name: string
-  last_name: string
-  display_name: string
+  first_name?: string
+  last_name?: string
+  display_name?: string
   role_id: string
   preferred_language: 'en' | 'es'
   pin?: string
@@ -88,12 +88,14 @@ export function TeamTab() {
 
   const handleSave = async (data: StaffFormData) => {
     if (data.id) {
-      await updateStaff.mutateAsync({ ...data, id: data.id })
+      await updateStaff.mutateAsync({
+        id: data.id,
+        role_id: data.role_id,
+        preferred_language: data.preferred_language,
+        ...(data.pin ? { pin: data.pin } : {}),
+      })
     } else {
       await createStaff.mutateAsync({
-        first_name: data.first_name,
-        last_name: data.last_name,
-        display_name: data.display_name,
         pin: data.pin!,
         role_id: data.role_id,
         zone_id: zone!.id,
@@ -161,8 +163,6 @@ export function TeamTab() {
               onEdit={() => {
                 setEditingStaff({
                   id: member.id,
-                  first_name: member.first_name,
-                  last_name: member.last_name,
                   display_name: member.display_name,
                   role_id: member.role_id,
                   preferred_language: member.preferred_language,
@@ -187,6 +187,7 @@ export function TeamTab() {
         onSave={handleSave}
         staff={editingStaff}
         roles={roles ?? []}
+        existingStaff={allStaff?.map((s) => ({ role_id: s.role_id, is_active: s.is_active })) ?? []}
         isLoading={createStaff.isPending || updateStaff.isPending}
       />
 

@@ -9,9 +9,9 @@ import { cn } from '@/lib/utils/cn'
 
 interface StaffFormData {
   id?: string
-  first_name: string
-  last_name: string
-  display_name: string
+  first_name?: string
+  last_name?: string
+  display_name?: string
   role_id: string
   preferred_language: 'en' | 'es'
 }
@@ -22,15 +22,17 @@ interface AddStaffDialogProps {
   onSave: (data: StaffFormData & { pin?: string }) => void
   staff?: StaffFormData | null
   roles: { id: string; name_en: string; name_es: string; slug: string; is_manager: boolean }[]
+  existingStaff?: { role_id: string; is_active: boolean }[]
   isLoading?: boolean
 }
 
-export function AddStaffDialog({ open, onClose, onSave, staff, roles, isLoading }: AddStaffDialogProps) {
+function getRoleStaffCount(roleId: string, existingStaff: { role_id: string; is_active: boolean }[]) {
+  return existingStaff.filter((s) => s.role_id === roleId).length
+}
+
+export function AddStaffDialog({ open, onClose, onSave, staff, roles, existingStaff = [], isLoading }: AddStaffDialogProps) {
   const t = useTranslations('manager.staff')
 
-  const [firstName, setFirstName] = useState('')
-  const [lastName, setLastName] = useState('')
-  const [displayName, setDisplayName] = useState('')
   const [pin, setPin] = useState('')
   const [confirmPin, setConfirmPin] = useState('')
   const [roleId, setRoleId] = useState('')
@@ -42,15 +44,9 @@ export function AddStaffDialog({ open, onClose, onSave, staff, roles, isLoading 
   useEffect(() => {
     if (open) {
       if (staff) {
-        setFirstName(staff.first_name)
-        setLastName(staff.last_name)
-        setDisplayName(staff.display_name)
         setRoleId(staff.role_id)
         setLanguage(staff.preferred_language)
       } else {
-        setFirstName('')
-        setLastName('')
-        setDisplayName('')
         setRoleId(roles.find((r) => !r.is_manager)?.id || '')
         setLanguage('en')
       }
@@ -60,20 +56,18 @@ export function AddStaffDialog({ open, onClose, onSave, staff, roles, isLoading 
     }
   }, [open, staff, roles])
 
-  // Auto-generate display name
-  useEffect(() => {
-    if (!isEdit || !staff?.display_name) {
-      if (firstName && lastName) {
-        setDisplayName(`${firstName} ${lastName.charAt(0)}.`)
-      }
-    }
-  }, [firstName, lastName, isEdit, staff?.display_name])
+  const selectedRole = roles.find((r) => r.id === roleId)
+  const nextNumber = selectedRole
+    ? getRoleStaffCount(roleId, existingStaff) + 1
+    : null
+  const previewName = selectedRole
+    ? `${selectedRole.name_en} ${isEdit ? '' : nextNumber}`
+    : ''
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {}
 
-    if (!firstName.trim()) newErrors.firstName = t('firstNameRequired')
-    if (!lastName.trim()) newErrors.lastName = t('lastNameRequired')
+    if (!roleId) newErrors.role = t('roleRequired' as 'addStaff')
 
     if (!isEdit && !pin) {
       newErrors.pin = t('pinRequired')
@@ -94,9 +88,6 @@ export function AddStaffDialog({ open, onClose, onSave, staff, roles, isLoading 
 
     onSave({
       id: staff?.id,
-      first_name: firstName.trim(),
-      last_name: lastName.trim(),
-      display_name: displayName.trim(),
       role_id: roleId,
       preferred_language: language,
       ...(pin ? { pin } : {}),
@@ -112,66 +103,6 @@ export function AddStaffDialog({ open, onClose, onSave, staff, roles, isLoading 
         <DialogTitle>{isEdit ? t('editStaff') : t('addStaff')}</DialogTitle>
       </DialogHeader>
       <DialogContent className="space-y-4">
-        {/* Name fields */}
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="text-xs font-medium text-brown/60 mb-1 block">{t('firstName')}</label>
-            <Input
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              className={errors.firstName ? 'border-red' : ''}
-            />
-            {errors.firstName && <p className="text-xs text-red mt-1">{errors.firstName}</p>}
-          </div>
-          <div>
-            <label className="text-xs font-medium text-brown/60 mb-1 block">{t('lastName')}</label>
-            <Input
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-              className={errors.lastName ? 'border-red' : ''}
-            />
-            {errors.lastName && <p className="text-xs text-red mt-1">{errors.lastName}</p>}
-          </div>
-        </div>
-
-        {/* Display name */}
-        <div>
-          <label className="text-xs font-medium text-brown/60 mb-1 block">{t('displayName')}</label>
-          <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
-        </div>
-
-        {/* PIN fields */}
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="text-xs font-medium text-brown/60 mb-1 block">{t('pin')}</label>
-            <Input
-              type="password"
-              inputMode="numeric"
-              maxLength={4}
-              value={pin}
-              onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
-              placeholder={isEdit ? '••••' : ''}
-              className={errors.pin ? 'border-red' : ''}
-            />
-            {isEdit && <p className="text-[10px] text-brown/40 mt-1">{t('pinLeaveBlank')}</p>}
-            {errors.pin && <p className="text-xs text-red mt-1">{errors.pin}</p>}
-          </div>
-          <div>
-            <label className="text-xs font-medium text-brown/60 mb-1 block">{t('confirmPin')}</label>
-            <Input
-              type="password"
-              inputMode="numeric"
-              maxLength={4}
-              value={confirmPin}
-              onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, ''))}
-              placeholder={isEdit ? '••••' : ''}
-              className={errors.confirmPin ? 'border-red' : ''}
-            />
-            {errors.confirmPin && <p className="text-xs text-red mt-1">{errors.confirmPin}</p>}
-          </div>
-        </div>
-        <p className="text-[10px] text-brown/40 -mt-2">{t('pinHint')}</p>
-
         {/* Role selector */}
         <div>
           <label className="text-xs font-medium text-brown/60 mb-1 block">{t('role')}</label>
@@ -206,6 +137,54 @@ export function AddStaffDialog({ open, onClose, onSave, staff, roles, isLoading 
             )}
           </div>
         </div>
+
+        {/* Auto-generated name preview */}
+        {!isEdit && previewName && (
+          <div className="bg-cream rounded-xl p-3 border border-brown/10">
+            <p className="text-xs text-brown/50 mb-1">{t('assignedName')}</p>
+            <p className="text-base font-semibold text-brown">{previewName}</p>
+          </div>
+        )}
+
+        {/* Current name display for edit */}
+        {isEdit && staff?.display_name && (
+          <div className="bg-cream rounded-xl p-3 border border-brown/10">
+            <p className="text-xs text-brown/50 mb-1">{t('assignedName')}</p>
+            <p className="text-base font-semibold text-brown">{staff.display_name}</p>
+          </div>
+        )}
+
+        {/* PIN fields */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs font-medium text-brown/60 mb-1 block">{t('pin')}</label>
+            <Input
+              type="password"
+              inputMode="numeric"
+              maxLength={4}
+              value={pin}
+              onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+              placeholder={isEdit ? '••••' : ''}
+              className={errors.pin ? 'border-red' : ''}
+            />
+            {isEdit && <p className="text-[10px] text-brown/40 mt-1">{t('pinLeaveBlank')}</p>}
+            {errors.pin && <p className="text-xs text-red mt-1">{errors.pin}</p>}
+          </div>
+          <div>
+            <label className="text-xs font-medium text-brown/60 mb-1 block">{t('confirmPin')}</label>
+            <Input
+              type="password"
+              inputMode="numeric"
+              maxLength={4}
+              value={confirmPin}
+              onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, ''))}
+              placeholder={isEdit ? '••••' : ''}
+              className={errors.confirmPin ? 'border-red' : ''}
+            />
+            {errors.confirmPin && <p className="text-xs text-red mt-1">{errors.confirmPin}</p>}
+          </div>
+        </div>
+        <p className="text-[10px] text-brown/40 -mt-2">{t('pinHint')}</p>
 
         {/* Language preference */}
         <div>

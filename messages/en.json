@@ -113,7 +113,9 @@
       "firstNameRequired": "First name is required",
       "lastNameRequired": "Last name is required",
       "saved": "Staff member saved",
-      "noStaff": "No staff members in this zone"
+      "noStaff": "No staff members in this zone",
+      "assignedName": "Assigned Name",
+      "roleRequired": "Please select a role"
     }
   },
   "sop": {

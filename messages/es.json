@@ -113,7 +113,9 @@
       "firstNameRequired": "El nombre es obligatorio",
       "lastNameRequired": "El apellido es obligatorio",
       "saved": "Personal guardado",
-      "noStaff": "No hay personal en esta zona"
+      "noStaff": "No hay personal en esta zona",
+      "assignedName": "Nombre Asignado",
+      "roleRequired": "Por favor selecciona un rol"
     }
   },
   "sop": {
