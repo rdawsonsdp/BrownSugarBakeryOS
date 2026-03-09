@@ -36,6 +36,25 @@ export function useAssignSOPStaff() {
   })
 }
 
+export function useReorderSOPs() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (items: { id: string; sort_order: number }[]) => {
+      const res = await fetch('/api/sops', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: '_reorder', reorder: items }),
+      })
+      if (!res.ok) throw new Error('Failed to reorder SOPs')
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sops'] })
+    },
+  })
+}
+
 export function useToggleSOPActive() {
   const queryClient = useQueryClient()
 

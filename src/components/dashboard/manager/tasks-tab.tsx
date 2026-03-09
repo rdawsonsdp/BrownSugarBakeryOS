@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Search, Plus, Edit2, Settings, Trash2, EyeOff, User, ChevronDown } from 'lucide-react'
+import { Search, Plus, Edit2, Trash2, EyeOff, User, Shield, ClipboardList, ChevronDown } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useLocaleStore } from '@/lib/stores/locale-store'
 import { useAuthStore } from '@/lib/stores/auth-store'
@@ -10,17 +10,20 @@ import { useZones } from '@/lib/hooks/use-zones'
 import { useZoneStaff } from '@/lib/hooks/use-staff'
 import { useCategories } from '@/lib/hooks/use-categories'
 import { useDeleteSOP, useToggleSOPActive, useAssignSOPStaff } from '@/lib/hooks/use-sop-mutations'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { createClient } from '@/lib/supabase/client'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Dialog, DialogHeader, DialogTitle, DialogContent } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { SOPEditor } from '@/components/sop/sop-editor'
 import { DeleteSOPDialog } from '@/components/sop/delete-sop-dialog'
 import { CategoriesManager } from './categories-manager'
 import { cn } from '@/lib/utils/cn'
-import type { SOPWithSteps, Category } from '@/lib/types/database.types'
+import { Settings } from 'lucide-react'
+import type { SOPWithSteps, Category, Role } from '@/lib/types/database.types'
 
 export function TasksTab() {
   const t = useTranslations('sop')
@@ -42,6 +45,16 @@ export function TasksTab() {
   const deleteSOP = useDeleteSOP()
   const toggleActive = useToggleSOPActive()
   const assignStaff = useAssignSOPStaff()
+
+  // Fetch roles for grouping (roles are global, not zone-specific)
+  const { data: roles = [] } = useQuery<Role[]>({
+    queryKey: ['all-roles'],
+    queryFn: async () => {
+      const supabase = createClient()
+      const { data } = await supabase.from('roles').select('*').order('sort_order').order('name_en')
+      return data ?? []
+    },
+  })
 
   const filteredSOPs = sops?.filter((sop) => {
     if (!search) return true
@@ -81,17 +94,35 @@ export function TasksTab() {
     }
   }
 
-  // Show SOP editor full-screen
-  if (editorOpen) {
-    return (
-      <SOPEditor
-        sop={editingSOP}
-        zoneId={zone?.id ?? ''}
-        onSave={handleSave}
-        onCancel={() => { setEditorOpen(false); setEditingSOP(undefined) }}
-      />
-    )
-  }
+  // Group SOPs by role
+  const groupedByRole = (() => {
+    if (!filteredSOPs) return []
+
+    const roleMap = new Map<string, { role: Role | null; sops: SOPWithSteps[] }>()
+
+    // Build a lookup from staff role_id -> Role
+    const roleById = new Map(roles.map((r) => [r.id, r]))
+
+    for (const sop of filteredSOPs) {
+      const staffRoleId = sop.assigned_staff?.role_id
+      const role = staffRoleId ? roleById.get(staffRoleId) ?? null : null
+      const key = role?.id || '__unassigned__'
+
+      if (!roleMap.has(key)) {
+        roleMap.set(key, { role, sops: [] })
+      }
+      roleMap.get(key)!.sops.push(sop)
+    }
+
+    // Sort: manager roles first, then by sort order, unassigned last
+    return Array.from(roleMap.values()).sort((a, b) => {
+      if (!a.role) return 1
+      if (!b.role) return -1
+      if (a.role.is_manager && !b.role.is_manager) return -1
+      if (!a.role.is_manager && b.role.is_manager) return 1
+      return (a.role.sort_order ?? 99) - (b.role.sort_order ?? 99)
+    })
+  })()
 
   if (isLoading) {
     return (
@@ -103,7 +134,6 @@ export function TasksTab() {
     )
   }
 
-  // Find zone name for display
   const getZoneName = (zoneId: string) => {
     const z = zones?.find((z) => z.id === zoneId)
     if (!z) return ''
@@ -172,26 +202,72 @@ export function TasksTab() {
         ))}
       </div>
 
-      {/* SOP List */}
-      <div className="space-y-3">
-        {filteredSOPs?.map((sop) => (
-          <SOPCard
-            key={sop.id}
-            sop={sop}
-            categories={categories}
-            zoneName={getZoneName(sop.zone_id)}
-            zoneColor={getZoneColor(sop.zone_id)}
-            staffList={zoneStaff || []}
-            onEdit={() => handleEdit(sop)}
-            onDelete={() => setDeleteTarget(sop)}
-            onDeactivate={() => toggleActive.mutate({ id: sop.id, is_active: false })}
-            onAssign={(staffId) => assignStaff.mutate({ id: sop.id, assigned_staff_id: staffId })}
-          />
-        ))}
+      {/* SOPs grouped by Role */}
+      <div className="space-y-5">
+        {groupedByRole.map((group) => {
+          const roleName = group.role
+            ? (locale === 'es' ? group.role.name_es : group.role.name_en)
+            : 'Unassigned'
+          const RoleIcon = group.role?.is_manager ? Shield : ClipboardList
+
+          return (
+            <div key={group.role?.id || 'unassigned'}>
+              {/* Role header */}
+              <div className="flex items-center gap-2 mb-2">
+                <div className={cn(
+                  'w-7 h-7 rounded-lg flex items-center justify-center',
+                  group.role?.is_manager ? 'bg-gold/10' : 'bg-brown/5'
+                )}>
+                  {group.role ? (
+                    <RoleIcon className={cn('w-4 h-4', group.role.is_manager ? 'text-gold' : 'text-brown/40')} />
+                  ) : (
+                    <User className="w-4 h-4 text-brown/30" />
+                  )}
+                </div>
+                <span className="text-xs font-bold text-brown uppercase tracking-wide">
+                  {roleName}
+                </span>
+                <span className="text-[10px] text-brown/40 ml-auto">
+                  {group.sops.length} {group.sops.length === 1 ? 'task' : 'tasks'}
+                </span>
+              </div>
+
+              {/* SOP cards under this role */}
+              <div className="space-y-2 ml-2 border-l-2 border-brown/5 pl-3">
+                {group.sops.map((sop) => (
+                  <SOPCard
+                    key={sop.id}
+                    sop={sop}
+                    categories={categories}
+                    zoneName={getZoneName(sop.zone_id)}
+                    zoneColor={getZoneColor(sop.zone_id)}
+                    staffList={zoneStaff || []}
+                    onEdit={() => handleEdit(sop)}
+                    onDelete={() => setDeleteTarget(sop)}
+                    onDeactivate={() => toggleActive.mutate({ id: sop.id, is_active: false })}
+                    onAssign={(staffId) => assignStaff.mutate({ id: sop.id, assigned_staff_id: staffId })}
+                  />
+                ))}
+              </div>
+            </div>
+          )
+        })}
         {filteredSOPs?.length === 0 && (
           <p className="text-sm text-brown/40 text-center py-6">No SOPs found</p>
         )}
       </div>
+
+      {/* SOP Editor Modal */}
+      <Dialog open={editorOpen} onClose={() => { setEditorOpen(false); setEditingSOP(undefined) }} className="max-w-2xl max-h-[90vh]">
+        <div className="overflow-y-auto max-h-[85vh]">
+          <SOPEditor
+            sop={editingSOP}
+            zoneId={zone?.id ?? ''}
+            onSave={handleSave}
+            onCancel={() => { setEditorOpen(false); setEditingSOP(undefined) }}
+          />
+        </div>
+      </Dialog>
 
       <CategoriesManager open={categoriesManagerOpen} onClose={() => setCategoriesManagerOpen(false)} />
 
@@ -235,7 +311,6 @@ function SOPCard({
   onDeactivate: () => void
   onAssign: (staffId: string | null) => void
 }) {
-  const [expanded, setExpanded] = useState(false)
   const [assignOpen, setAssignOpen] = useState(false)
   const { locale } = useLocaleStore()
   const t = useTranslations('sop')
@@ -254,66 +329,88 @@ function SOPCard({
 
   return (
     <Card variant="default" className="overflow-hidden">
-      <button onClick={() => setExpanded(!expanded)} className="w-full text-left">
-        <CardHeader className="pb-2">
-          <div className="flex items-center gap-2">
-            <CardTitle className="text-sm flex-1">{name}</CardTitle>
-            {sop.is_critical && (
-              <Badge variant="critical" className="text-[10px]">{t('critical')}</Badge>
-            )}
-            <Badge variant="default" className="text-[10px] capitalize">
-              {categoryLabel}
-            </Badge>
-          </div>
+      <CardHeader className="pb-2">
+        <div className="flex items-center gap-2">
+          <CardTitle className="text-sm flex-1">{name}</CardTitle>
+          {/* Edit icon */}
+          <button
+            onClick={(e) => { e.stopPropagation(); onEdit() }}
+            className="p-1.5 rounded-lg text-brown/30 hover:text-brown hover:bg-brown/5 transition-colors"
+          >
+            <Edit2 className="w-4 h-4" />
+          </button>
+          {sop.is_critical && (
+            <Badge variant="critical" className="text-[10px]">{t('critical')}</Badge>
+          )}
+          <Badge variant="default" className="text-[10px] capitalize">
+            {categoryLabel}
+          </Badge>
+        </div>
 
-          {/* Zone + Assigned person row */}
-          <div className="flex items-center gap-2 mt-1.5">
-            {zoneName && (
-              <span
-                className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold text-white"
-                style={{ backgroundColor: zoneColor || '#4A2C1A' }}
-              >
-                {zoneName}
-              </span>
-            )}
-            <button
-              onClick={(e) => { e.stopPropagation(); setAssignOpen(!assignOpen) }}
-              className={cn(
-                'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border transition-colors',
-                assignedName
-                  ? 'bg-brown/5 border-brown/20 text-brown'
-                  : 'bg-cream border-dashed border-brown/20 text-brown/40'
-              )}
+        {/* Zone + Assigned person row */}
+        <div className="flex items-center gap-2 mt-1.5">
+          {zoneName && (
+            <span
+              className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold text-white"
+              style={{ backgroundColor: zoneColor || '#4A2C1A' }}
             >
-              <User className="w-3 h-3" />
-              {assignedName || 'Assign Role'}
-              <ChevronDown className="w-2.5 h-2.5" />
-            </button>
-          </div>
-
-          {description && <p className="text-xs text-brown/50 mt-1">{description}</p>}
-          {/* Day-of-week schedule badges */}
-          <div className="flex items-center gap-1 mt-1.5">
-            {sop.days_of_week && sop.days_of_week.length > 0 ? (
-              DAY_KEYS.map((key, i) => (
-                <span
-                  key={i}
-                  className={cn(
-                    'w-5 h-5 rounded-full text-[9px] font-semibold flex items-center justify-center',
-                    sop.days_of_week!.includes(i)
-                      ? 'bg-brown/10 text-brown'
-                      : 'text-brown/15'
-                  )}
-                >
-                  {te(key)}
-                </span>
-              ))
-            ) : (
-              <span className="text-[10px] text-brown/30">{te('everyDay')}</span>
+              {zoneName}
+            </span>
+          )}
+          <button
+            onClick={(e) => { e.stopPropagation(); setAssignOpen(!assignOpen) }}
+            className={cn(
+              'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border transition-colors',
+              assignedName
+                ? 'bg-brown/5 border-brown/20 text-brown'
+                : 'bg-cream border-dashed border-brown/20 text-brown/40'
             )}
-          </div>
-        </CardHeader>
-      </button>
+          >
+            <User className="w-3 h-3" />
+            {assignedName || 'Assign'}
+            <ChevronDown className="w-2.5 h-2.5" />
+          </button>
+        </div>
+
+        {description && <p className="text-xs text-brown/50 mt-1">{description}</p>}
+
+        {/* Day-of-week schedule badges */}
+        <div className="flex items-center gap-1 mt-1.5">
+          {sop.days_of_week && sop.days_of_week.length > 0 ? (
+            DAY_KEYS.map((key, i) => (
+              <span
+                key={i}
+                className={cn(
+                  'w-5 h-5 rounded-full text-[9px] font-semibold flex items-center justify-center',
+                  sop.days_of_week!.includes(i)
+                    ? 'bg-brown/10 text-brown'
+                    : 'text-brown/15'
+                )}
+              >
+                {te(key)}
+              </span>
+            ))
+          ) : (
+            <span className="text-[10px] text-brown/30">{te('everyDay')}</span>
+          )}
+        </div>
+
+        {/* Quick actions */}
+        <div className="flex gap-1.5 mt-2">
+          <button
+            onClick={(e) => { e.stopPropagation(); onDeactivate() }}
+            className="inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium text-brown/30 hover:text-brown/60 hover:bg-brown/5 transition-colors"
+          >
+            <EyeOff className="w-3 h-3" /> {tl('deactivate')}
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onDelete() }}
+            className="inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium text-red/40 hover:text-red hover:bg-red/5 transition-colors"
+          >
+            <Trash2 className="w-3 h-3" /> {tl('delete')}
+          </button>
+        </div>
+      </CardHeader>
 
       {/* Inline assignment picker */}
       {assignOpen && (
@@ -347,54 +444,6 @@ function SOPCard({
             ))}
           </div>
         </div>
-      )}
-
-      {expanded && sop.sop_steps && (
-        <CardContent className="pt-2">
-          <div className="space-y-2 border-t border-brown/5 pt-3">
-            {sop.sop_steps.map((step) => (
-              <div key={step.id} className="flex gap-2 text-sm">
-                <span className="w-5 h-5 rounded-full bg-brown/10 flex items-center justify-center text-xs font-bold text-brown/50 flex-shrink-0">
-                  {step.step_number}
-                </span>
-                <div>
-                  <p className="font-medium text-brown text-xs">
-                    {locale === 'es' ? step.title_es : step.title_en}
-                  </p>
-                  <p className="text-xs text-brown/40">
-                    {locale === 'es' ? step.description_es : step.description_en}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="flex gap-2 mt-3 flex-wrap">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => { e.stopPropagation(); onEdit() }}
-              className="gap-1 text-brown/50"
-            >
-              <Edit2 className="w-3.5 h-3.5" /> {t('editor.title')}
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => { e.stopPropagation(); onDeactivate() }}
-              className="gap-1 text-brown/40"
-            >
-              <EyeOff className="w-3.5 h-3.5" /> {tl('deactivate')}
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => { e.stopPropagation(); onDelete() }}
-              className="gap-1 text-red/60"
-            >
-              <Trash2 className="w-3.5 h-3.5" /> {tl('delete')}
-            </Button>
-          </div>
-        </CardContent>
       )}
     </Card>
   )

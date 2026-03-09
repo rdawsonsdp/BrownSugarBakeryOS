@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
   let query = supabase
     .from('sops')
     .select('*, sop_steps(*), assigned_staff:staff!sops_assigned_staff_id_fkey(id, display_name, role_id)')
-    .order('created_at', { ascending: false })
+    .order('sort_order', { ascending: true })
 
   if (library === 'true') {
     // Library mode: show all statuses, filter by is_active unless show_inactive
@@ -138,10 +138,24 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'SOP id required' }, { status: 400 })
   }
 
+  // Bulk reorder: { reorder: [{ id, sort_order }] }
+  if ('reorder' in fields && Array.isArray(fields.reorder)) {
+    const updates = fields.reorder as { id: string; sort_order: number }[]
+    for (const item of updates) {
+      await supabase
+        .from('sops')
+        .update({ sort_order: item.sort_order, updated_at: new Date().toISOString() })
+        .eq('id', item.id)
+    }
+    return NextResponse.json({ success: true })
+  }
+
   // Allow updating: is_active, assigned_staff_id, etc.
   const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() }
   if ('is_active' in fields) updateData.is_active = fields.is_active
   if ('assigned_staff_id' in fields) updateData.assigned_staff_id = fields.assigned_staff_id
+  if ('sort_order' in fields) updateData.sort_order = fields.sort_order
+  if ('status' in fields) updateData.status = fields.status
 
   const { data, error } = await supabase
     .from('sops')

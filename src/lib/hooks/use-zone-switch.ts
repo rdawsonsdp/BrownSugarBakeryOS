@@ -20,16 +20,15 @@ export function useZoneSwitch() {
     try {
       const supabase = createClient()
 
-      // Resolve manager role for target zone
+      // Resolve manager role (roles are global, not zone-specific)
       const { data: roles } = await supabase
         .from('roles')
         .select('*')
-        .eq('zone_id', zone.id)
         .eq('is_manager', true)
         .limit(1)
 
       const resolvedRole = roles?.[0]
-      if (!resolvedRole) throw new Error('No manager role for zone')
+      if (!resolvedRole) throw new Error('No manager role found')
 
       // Create or resume shift
       const today = new Date().toISOString().split('T')[0]

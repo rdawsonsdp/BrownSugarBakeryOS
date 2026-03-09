@@ -3,50 +3,71 @@
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { useAuthStore } from '@/lib/stores/auth-store'
+import { useLocaleStore } from '@/lib/stores/locale-store'
 import { PinPad } from '@/components/pin/pin-pad'
 import { useCallback, useEffect, useState } from 'react'
 
 export default function LoginPinPage() {
   const router = useRouter()
-  const { selectedStaff } = useAuthStore()
+  const { locale } = useLocaleStore()
+  const { loginMode, selectedStaff, selectedRole, setVerifiedStaff, setSelectedRole } = useAuthStore()
   const [error, setError] = useState(false)
 
   useEffect(() => {
-    if (!selectedStaff) {
+    if (!loginMode) {
       router.push('/login')
     }
-  }, [selectedStaff, router])
+  }, [loginMode, router])
 
-  if (!selectedStaff) return null
+  if (!loginMode) return null
+
+  const isRoleMode = loginMode === 'role'
+  const headerLabel = isRoleMode
+    ? (locale === 'es' ? selectedRole?.name_es : selectedRole?.name_en) || 'Role'
+    : selectedStaff?.display_name || 'Staff'
 
   const handlePinSubmit = useCallback(async (pin: string): Promise<boolean> => {
     try {
-      const res = await fetch('/api/pin-verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          staff_id: selectedStaff.id,
-          pin,
-        }),
-      })
+      if (isRoleMode) {
+        // Role mode: PIN identifies the person
+        const verifyRes = await fetch('/api/pin-verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pin }),
+        })
+        if (!verifyRes.ok) { setError(true); return false }
+        const data = await verifyRes.json()
 
-      if (!res.ok) {
-        setError(true)
-        return false
+        setVerifiedStaff(data.staff)
+        setTimeout(() => router.push('/login/role'), 600)
+        return true
+      } else {
+        // Name mode: verify PIN against the selected person
+        const res = await fetch('/api/pin-verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ staff_id: selectedStaff!.id, pin }),
+        })
+
+        if (!res.ok) {
+          setError(true)
+          return false
+        }
+
+        const data = await res.json()
+        setVerifiedStaff(data.staff)
+
+        if (data.staff.role) {
+          setSelectedRole(data.staff.role)
+        }
+        setTimeout(() => router.push('/login/role'), 600)
+        return true
       }
-
-      const data = await res.json()
-
-      // Store verified staff — zone and role selection come next
-      useAuthStore.getState().selectStaff(data.staff)
-
-      setTimeout(() => router.push('/login/zone'), 600)
-      return true
     } catch {
       setError(true)
       return false
     }
-  }, [selectedStaff, router])
+  }, [isRoleMode, selectedStaff, setVerifiedStaff, setSelectedRole, router])
 
   return (
     <motion.div
@@ -65,7 +86,7 @@ export default function LoginPinPage() {
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
           </button>
-          <span className="text-sm font-bold text-white/70">{selectedStaff.display_name}</span>
+          <span className="text-sm font-bold text-white/70">{headerLabel}</span>
         </div>
       </div>
 
@@ -75,15 +96,19 @@ export default function LoginPinPage() {
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-10"
         >
-          <h1 className="text-2xl font-bold text-brown">Enter Your PIN</h1>
-          <p className="text-brown/50 text-sm mt-1">4-digit code</p>
+          <h1 className="text-2xl font-bold text-brown">
+            {locale === 'es' ? 'Ingresa tu PIN' : 'Enter Your PIN'}
+          </h1>
+          <p className="text-brown/50 text-sm mt-1">
+            {locale === 'es' ? 'Código de 4 dígitos' : '4-digit code'}
+          </p>
           {error && (
             <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               className="text-red text-sm mt-2 font-medium"
             >
-              Incorrect PIN. Try again.
+              {locale === 'es' ? 'PIN incorrecto. Intenta de nuevo.' : 'Incorrect PIN. Try again.'}
             </motion.p>
           )}
         </motion.div>

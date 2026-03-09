@@ -43,6 +43,7 @@ export interface Role {
   description_es: string | null
   is_manager: boolean
   zone_id: string
+  sort_order: number | null
   created_at: string
 }
 
@@ -75,6 +76,7 @@ export interface SOP {
   status: SOPStatus
   version: number
   assigned_staff_id: string | null
+  sort_order: number
   days_of_week: number[] | null
   created_by: string | null
   created_at: string

@@ -41,54 +41,118 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Failed to create shift' }, { status: 500 })
       }
       shift = newShift
+    }
 
-      // 2. Create task completions for this role
-      // Get SOPs assigned to this role via role_sop_assignments
+    // 2. Check if this shift already has task completions
+    const { count: existingTaskCount } = await supabase
+      .from('task_completions')
+      .select('*', { count: 'exact', head: true })
+      .eq('shift_id', shift.id)
+
+    // Only create tasks if the shift has none yet
+    if ((existingTaskCount ?? 0) === 0) {
+      const dayOfWeek = new Date().getDay()
+      const handledSopIds = new Set<string>()
+
+      // Helper: find or create task_template for a SOP, then create task_completion
+      const createTasksFromSops = async (sops: Array<{ id: string; name_en: string; name_es: string; description_en: string | null; description_es: string | null; sort_order: number; is_critical: boolean; days_of_week: number[] | null }>) => {
+        // Filter by day of week
+        const todaySops = sops.filter((sop) => {
+          if (handledSopIds.has(sop.id)) return false
+          if (sop.days_of_week && !sop.days_of_week.includes(dayOfWeek)) return false
+          return true
+        })
+        if (todaySops.length === 0) return
+
+        const sopIds = todaySops.map((s) => s.id)
+        const { data: existingTemplates } = await supabase
+          .from('task_templates')
+          .select('*')
+          .eq('zone_id', zone_id)
+          .eq('is_active', true)
+          .in('sop_id', sopIds)
+
+        const templateBySopId = new Map(
+          (existingTemplates ?? []).map((t) => [t.sop_id, t])
+        )
+
+        // Create missing task_templates
+        const missing = todaySops
+          .filter((sop) => !templateBySopId.has(sop.id))
+          .map((sop) => ({
+            name_en: sop.name_en,
+            name_es: sop.name_es,
+            description_en: sop.description_en,
+            description_es: sop.description_es,
+            zone_id,
+            shift_type: shiftType,
+            sop_id: sop.id,
+            priority: sop.sort_order ?? 5,
+            is_critical: sop.is_critical,
+          }))
+
+        if (missing.length > 0) {
+          const { data: created } = await supabase
+            .from('task_templates').insert(missing).select()
+          for (const t of created ?? []) templateBySopId.set(t.sop_id, t)
+        }
+
+        const completions = todaySops
+          .map((sop) => {
+            const template = templateBySopId.get(sop.id)
+            if (!template) return null
+            handledSopIds.add(sop.id)
+            return {
+              task_template_id: template.id,
+              shift_id: shift!.id,
+              staff_id,
+              status: 'pending' as const,
+            }
+          })
+          .filter(Boolean)
+
+        if (completions.length > 0) {
+          await supabase.from('task_completions').insert(completions)
+        }
+      }
+
+      // PRIMARY: Get SOPs assigned to this ROLE via role_sop_assignments
       const { data: roleAssignments } = await supabase
         .from('role_sop_assignments')
         .select('sop_id')
         .eq('role_id', role_id)
         .eq('is_active', true)
 
-      const assignedSopIds = roleAssignments?.map((a) => a.sop_id) ?? []
-
-      // Filter by day of week
-      const dayOfWeek = new Date().getDay()
-      if (assignedSopIds.length > 0) {
-        const { data: excludedSOPs } = await supabase
+      const roleSopIds = roleAssignments?.map((a) => a.sop_id) ?? []
+      if (roleSopIds.length > 0) {
+        const { data: roleSops } = await supabase
           .from('sops')
-          .select('id')
-          .in('id', assignedSopIds)
-          .not('days_of_week', 'is', null)
-          .not('days_of_week', 'cs', `{${dayOfWeek}}`)
+          .select('*')
+          .in('id', roleSopIds)
+          .eq('is_active', true)
+          .eq('status', 'published')
+          .order('sort_order')
 
-        const excludedIds = new Set(excludedSOPs?.map((s) => s.id) ?? [])
-        const todaySopIds = assignedSopIds.filter((id) => !excludedIds.has(id))
-
-        // Get task templates for these SOPs (or for this role directly)
-        if (todaySopIds.length > 0) {
-          const { data: templates } = await supabase
-            .from('task_templates')
-            .select('*')
-            .eq('zone_id', zone_id)
-            .eq('is_active', true)
-            .in('sop_id', todaySopIds)
-
-          const todayTemplates = templates ?? []
-
-          if (todayTemplates.length > 0) {
-            const completions = todayTemplates.map((t) => ({
-              task_template_id: t.id,
-              shift_id: shift!.id,
-              staff_id,
-              status: 'pending' as const,
-            }))
-            await supabase.from('task_completions').insert(completions)
-          }
+        if (roleSops && roleSops.length > 0) {
+          await createTasksFromSops(roleSops)
         }
       }
 
-      // Also get zone-wide task templates (no specific role, no sop_id)
+      // SECONDARY: Get SOPs assigned directly to this staff member
+      const { data: staffSops } = await supabase
+        .from('sops')
+        .select('*')
+        .eq('zone_id', zone_id)
+        .eq('assigned_staff_id', staff_id)
+        .eq('is_active', true)
+        .eq('status', 'published')
+        .order('sort_order')
+
+      if (staffSops && staffSops.length > 0) {
+        await createTasksFromSops(staffSops)
+      }
+
+      // TERTIARY: Zone-wide task templates (no specific role, no sop_id)
       const { data: zoneTemplates } = await supabase
         .from('task_templates')
         .select('*')

@@ -14,7 +14,7 @@ import { TeamTab } from '@/components/dashboard/manager/team-tab'
 import { TasksTab } from '@/components/dashboard/manager/tasks-tab'
 import { SOPLibrary } from '@/components/sop/sop-library'
 import { Button } from '@/components/ui/button'
-import { LogOut } from 'lucide-react'
+import { LogOut, Settings } from 'lucide-react'
 
 export default function ManagerDashboardPage() {
   const router = useRouter()
@@ -89,7 +89,10 @@ export default function ManagerDashboardPage() {
           </Tabs>
         </div>
 
-        <div className="px-4 mt-6">
+        <div className="px-4 mt-6 space-y-2">
+          <Button variant="ghost" onClick={() => router.push('/admin/roles')} className="w-full text-brown/40">
+            <Settings className="w-4 h-4" /> Roles & Zones
+          </Button>
           <Button variant="ghost" onClick={handleLogout} className="w-full text-brown/40">
             <LogOut className="w-4 h-4" /> Sign Out
           </Button>

@@ -536,7 +536,7 @@ export function SOPEditor({ sop, zoneId, onSave, onCancel, onCancelWithPrompt }:
       </>)}
 
       {/* Action buttons */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-brown/10 px-4 pt-4 pb-16 flex gap-3">
+      <div className="sticky bottom-0 bg-white border-t border-brown/10 px-4 pt-4 pb-4 flex gap-3 -mx-4">
         <Button variant="ghost" onClick={handleCancelClick} className="flex-1">Cancel</Button>
         <Button variant="secondary" onClick={() => handleSave('draft')} className="flex-1">{t('saveDraft')}</Button>
         <Button variant="primary" onClick={() => handleSave('published')} className="flex-1">{t('publish')}</Button>

@@ -41,19 +41,18 @@ export function TeamTab() {
   const [editingStaff, setEditingStaff] = useState<StaffFormData | null>(null)
   const [confirmDialog, setConfirmDialog] = useState<{ type: 'deactivate' | 'reactivate' | 'delete'; id: string; name: string } | null>(null)
 
-  // Fetch roles for this zone
+  // Fetch roles (global, not zone-specific)
   const { data: roles } = useQuery({
-    queryKey: ['zone-roles', zone?.id],
+    queryKey: ['all-roles'],
     queryFn: async () => {
-      if (!zone?.id) return []
       const supabase = createClient()
       const { data } = await supabase
         .from('roles')
         .select('*')
-        .eq('zone_id', zone.id)
+        .order('sort_order')
+        .order('name_en')
       return data ?? []
     },
-    enabled: !!zone?.id,
   })
 
   // Fetch completion stats per staff
