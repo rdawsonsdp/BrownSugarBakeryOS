@@ -30,7 +30,7 @@ export default function StaffDashboardPage() {
 
   useEffect(() => {
     if (!isAuthenticated) {
-      router.push('/zone')
+      router.push('/login')
     }
   }, [isAuthenticated, router])
 
@@ -41,7 +41,7 @@ export default function StaffDashboardPage() {
 
   const handleLogout = () => {
     logout()
-    router.push('/zone')
+    router.push('/login')
   }
 
   const handlePrint = (sop: SOPWithSteps) => {

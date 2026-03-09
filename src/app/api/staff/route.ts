@@ -5,17 +5,24 @@ export async function GET(request: NextRequest) {
   const supabase = await createClient()
   const { searchParams } = new URL(request.url)
   const zoneId = searchParams.get('zone_id')
+  const allActive = searchParams.get('all_active')
 
-  if (!zoneId) {
-    return NextResponse.json({ error: 'zone_id is required' }, { status: 400 })
-  }
-
-  const { data, error } = await supabase
+  let query = supabase
     .from('staff')
     .select('*, role:roles(*)')
-    .eq('zone_id', zoneId)
     .order('is_active', { ascending: false })
     .order('display_name')
+
+  if (allActive === 'true') {
+    // Return all active staff (for login name selection)
+    query = query.eq('is_active', true)
+  } else if (zoneId) {
+    query = query.eq('zone_id', zoneId)
+  } else {
+    // Return all staff
+  }
+
+  const { data, error } = await query
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })

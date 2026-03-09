@@ -29,7 +29,7 @@ export default function ManagerDashboardPage() {
 
   useEffect(() => {
     if (!isAuthenticated) {
-      router.push('/zone')
+      router.push('/login')
     }
   }, [isAuthenticated, router])
 
@@ -39,7 +39,7 @@ export default function ManagerDashboardPage() {
 
   const handleLogout = () => {
     logout()
-    router.push('/zone')
+    router.push('/login')
   }
 
   return (

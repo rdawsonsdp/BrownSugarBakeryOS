@@ -136,6 +136,25 @@ export interface TaskCompletion {
   updated_at: string
 }
 
+export interface RoleSopAssignment {
+  id: string
+  role_id: string
+  sop_id: string
+  is_active: boolean
+  created_by: string | null
+  created_at: string
+}
+
+export interface LoginSession {
+  id: string
+  staff_id: string
+  zone_id: string
+  role_id: string
+  shift_id: string | null
+  logged_in_at: string
+  logged_out_at: string | null
+}
+
 export interface Notification {
   id: string
   zone_id: string

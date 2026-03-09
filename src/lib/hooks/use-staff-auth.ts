@@ -17,7 +17,7 @@ export function useStaffAuth() {
     const check = () => {
       if (Date.now() - lastActivity > INACTIVITY_TIMEOUT) {
         logout()
-        router.push('/zone')
+        router.push('/login')
       }
     }
 
@@ -41,7 +41,7 @@ export function useStaffAuth() {
 
   const requireAuth = useCallback(() => {
     if (!isAuthenticated) {
-      router.push('/zone')
+      router.push('/login')
       return false
     }
     return true

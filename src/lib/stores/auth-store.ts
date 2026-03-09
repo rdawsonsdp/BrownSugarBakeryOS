@@ -6,8 +6,8 @@ export interface Staff {
   first_name: string
   last_name: string
   display_name: string
-  role_id: string
-  zone_id: string
+  role_id: string | null
+  zone_id: string | null
   preferred_language: 'en' | 'es'
   streak_count: number
   is_active: boolean
@@ -29,6 +29,7 @@ export interface Role {
   slug: string
   is_manager: boolean
   zone_id: string
+  sort_order?: number
 }
 
 export interface Shift {
@@ -41,19 +42,25 @@ export interface Shift {
 }
 
 interface AuthState {
+  // Pre-auth selection
+  selectedStaffId: string | null
+  selectedStaff: Staff | null
+
+  // Authenticated state
   staff: Staff | null
   zone: Zone | null
   role: Role | null
   shift: Shift | null
-  roleType: 'staff' | 'manager' | null
   isAuthenticated: boolean
   lastActivity: number
 
-  login: (data: { staff: Staff; zone: Zone | null; role: Role; shift: Shift | null }) => void
-  logout: () => void
+  // Actions
+  selectStaff: (staff: Staff) => void
   setZone: (zone: Zone) => void
   setRole: (role: Role) => void
-  setRoleType: (roleType: 'staff' | 'manager') => void
+  setShift: (shift: Shift) => void
+  login: (data: { staff: Staff; zone: Zone; role: Role; shift: Shift }) => void
+  logout: () => void
   updateActivity: () => void
   updateShift: (shift: Shift) => void
 }
@@ -61,13 +68,21 @@ interface AuthState {
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
+      selectedStaffId: null,
+      selectedStaff: null,
       staff: null,
       zone: null,
       role: null,
       shift: null,
-      roleType: null,
       isAuthenticated: false,
       lastActivity: Date.now(),
+
+      selectStaff: (staff) =>
+        set({ selectedStaffId: staff.id, selectedStaff: staff }),
+
+      setZone: (zone) => set({ zone }),
+      setRole: (role) => set({ role }),
+      setShift: (shift) => set({ shift }),
 
       login: ({ staff, zone, role, shift }) =>
         set({
@@ -75,23 +90,23 @@ export const useAuthStore = create<AuthState>()(
           zone,
           role,
           shift,
-          isAuthenticated: !!(staff && zone && shift),
+          selectedStaffId: null,
+          selectedStaff: null,
+          isAuthenticated: true,
           lastActivity: Date.now(),
         }),
 
       logout: () =>
         set({
+          selectedStaffId: null,
+          selectedStaff: null,
           staff: null,
           zone: null,
           role: null,
           shift: null,
-          roleType: null,
           isAuthenticated: false,
         }),
 
-      setZone: (zone) => set({ zone }),
-      setRole: (role) => set({ role }),
-      setRoleType: (roleType) => set({ roleType }),
       updateActivity: () => set({ lastActivity: Date.now() }),
       updateShift: (shift) => set({ shift }),
     }),

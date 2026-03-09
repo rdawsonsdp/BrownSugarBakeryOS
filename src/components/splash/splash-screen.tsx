@@ -13,7 +13,7 @@ export function SplashScreen() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsVisible(false)
-      setTimeout(() => router.push('/role'), 400)
+      setTimeout(() => router.push('/login'), 400)
     }, 3200)
     return () => clearTimeout(timer)
   }, [router])
