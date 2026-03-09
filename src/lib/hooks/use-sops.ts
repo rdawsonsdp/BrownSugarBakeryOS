@@ -30,3 +30,17 @@ export function useSOP(sopId: string | null) {
     enabled: !!sopId,
   })
 }
+
+export function useSOPLibrary(zoneId?: string, showInactive?: boolean) {
+  return useQuery<SOPWithSteps[]>({
+    queryKey: ['sops', 'library', zoneId, showInactive],
+    queryFn: async () => {
+      const params = new URLSearchParams({ library: 'true' })
+      if (zoneId) params.set('zone_id', zoneId)
+      if (showInactive) params.set('show_inactive', 'true')
+      const res = await fetch(`/api/sops?${params}`)
+      if (!res.ok) throw new Error('Failed to fetch SOP library')
+      return res.json()
+    },
+  })
+}

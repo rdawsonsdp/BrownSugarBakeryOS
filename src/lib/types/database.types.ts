@@ -71,6 +71,7 @@ export interface SOP {
   category: string
   zone_id: string
   is_critical: boolean
+  is_active: boolean
   status: SOPStatus
   version: number
   days_of_week: number[] | null

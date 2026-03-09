@@ -45,6 +45,7 @@ interface AuthState {
   zone: Zone | null
   role: Role | null
   shift: Shift | null
+  roleType: 'staff' | 'manager' | null
   isAuthenticated: boolean
   lastActivity: number
 
@@ -52,6 +53,7 @@ interface AuthState {
   logout: () => void
   setZone: (zone: Zone) => void
   setRole: (role: Role) => void
+  setRoleType: (roleType: 'staff' | 'manager') => void
   updateActivity: () => void
   updateShift: (shift: Shift) => void
 }
@@ -63,6 +65,7 @@ export const useAuthStore = create<AuthState>()(
       zone: null,
       role: null,
       shift: null,
+      roleType: null,
       isAuthenticated: false,
       lastActivity: Date.now(),
 
@@ -82,11 +85,13 @@ export const useAuthStore = create<AuthState>()(
           zone: null,
           role: null,
           shift: null,
+          roleType: null,
           isAuthenticated: false,
         }),
 
       setZone: (zone) => set({ zone }),
       setRole: (role) => set({ role }),
+      setRoleType: (roleType) => set({ roleType }),
       updateActivity: () => set({ lastActivity: Date.now() }),
       updateShift: (shift) => set({ shift }),
     }),

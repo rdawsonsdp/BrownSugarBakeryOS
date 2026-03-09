@@ -39,7 +39,7 @@ export function TeamTab() {
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingStaff, setEditingStaff] = useState<StaffFormData | null>(null)
-  const [confirmDialog, setConfirmDialog] = useState<{ type: 'deactivate' | 'reactivate'; id: string; name: string } | null>(null)
+  const [confirmDialog, setConfirmDialog] = useState<{ type: 'deactivate' | 'reactivate' | 'delete'; id: string; name: string } | null>(null)
 
   // Fetch roles for this zone
   const { data: roles } = useQuery({
@@ -135,7 +135,7 @@ export function TeamTab() {
           {t('myTeam')}
         </h2>
         <Button variant="secondary" size="sm" onClick={() => { setEditingStaff(null); setDialogOpen(true) }} className="gap-1">
-          <Plus className="w-4 h-4" /> {ts('addStaff')}
+          <Plus className="w-4 h-4" /> {ts('addStaffOrRole')}
         </Button>
       </div>
 
@@ -169,6 +169,7 @@ export function TeamTab() {
                 })
                 setDialogOpen(true)
               }}
+              onDelete={() => setConfirmDialog({ type: 'delete', id: member.id, name: member.display_name })}
               onDeactivate={() => setConfirmDialog({ type: 'deactivate', id: member.id, name: member.display_name })}
               onReactivate={() => setConfirmDialog({ type: 'reactivate', id: member.id, name: member.display_name })}
             />
@@ -194,12 +195,16 @@ export function TeamTab() {
       <Dialog open={!!confirmDialog} onClose={() => setConfirmDialog(null)}>
         <DialogHeader>
           <DialogTitle>
-            {confirmDialog?.type === 'deactivate' ? ts('deactivate') : ts('reactivate')}
+            {confirmDialog?.type === 'delete' ? ts('deleteTitle')
+              : confirmDialog?.type === 'deactivate' ? ts('deactivate')
+              : ts('reactivate')}
           </DialogTitle>
         </DialogHeader>
         <DialogContent>
           <p className="text-sm text-brown/70">
-            {confirmDialog?.type === 'deactivate'
+            {confirmDialog?.type === 'delete'
+              ? ts('deleteConfirm', { name: confirmDialog.name })
+              : confirmDialog?.type === 'deactivate'
               ? ts('deactivateConfirm', { name: confirmDialog.name })
               : ts('reactivateConfirm', { name: confirmDialog?.name ?? '' })
             }
@@ -209,7 +214,11 @@ export function TeamTab() {
           <Button variant="ghost" onClick={() => setConfirmDialog(null)}>
             {t('cancel' as 'overview')}
           </Button>
-          {confirmDialog?.type === 'deactivate' ? (
+          {confirmDialog?.type === 'delete' ? (
+            <Button variant="danger" onClick={handleDeactivate} disabled={deactivateStaff.isPending}>
+              {ts('deleteTitle')}
+            </Button>
+          ) : confirmDialog?.type === 'deactivate' ? (
             <Button variant="danger" onClick={handleDeactivate} disabled={deactivateStaff.isPending}>
               {ts('deactivate')}
             </Button>

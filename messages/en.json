@@ -79,6 +79,8 @@
   "manager": {
     "overview": "Overview",
     "myTeam": "My Team",
+    "currentTasks": "Current Tasks",
+    "library": "Library",
     "allTasks": "All Tasks",
     "zoneHealth": "Zone Health",
     "completion": "{percent}% complete",
@@ -90,7 +92,9 @@
     "tasksOverdue": "{count} overdue",
     "staff": {
       "addStaff": "Add Staff",
+      "addStaffOrRole": "Add Staff or Role",
       "editStaff": "Edit Staff",
+      "displayNameRequired": "Display name is required",
       "firstName": "First Name",
       "lastName": "Last Name",
       "displayName": "Display Name",
@@ -113,16 +117,39 @@
       "firstNameRequired": "First name is required",
       "lastNameRequired": "Last name is required",
       "saved": "Staff member saved",
-      "noStaff": "No staff members in this zone"
+      "noStaff": "No staff members in this zone",
+      "deleteTitle": "Delete",
+      "deleteConfirm": "Are you sure you want to delete {name}? This action cannot be undone."
     }
   },
   "sop": {
     "title": "Standard Operating Procedures",
+    "currentTasks": "Current Tasks",
     "steps": "Steps",
     "step": "Step {number}",
     "critical": "Critical Task",
     "photoRequired": "Photo Required",
     "allZones": "All Zones",
+    "library": {
+      "title": "SOP Library",
+      "all": "All",
+      "active": "Active",
+      "inactive": "Inactive",
+      "showInactive": "Show Inactive",
+      "delete": "Delete SOP",
+      "deleteConfirm": "Are you sure you want to delete \"{name}\"? It will be deactivated and can be restored from the library.",
+      "deactivate": "Deactivate",
+      "reactivate": "Reactivate",
+      "saveForLater": "Save for Later?",
+      "saveForLaterMessage": "Would you like to save this SOP to your library as a draft?",
+      "saveAsDraft": "Save as Draft",
+      "discard": "Discard",
+      "keepEditing": "Keep Editing",
+      "empty": "No SOPs in your library yet. Create one to get started.",
+      "statusPublished": "Published",
+      "statusDraft": "Draft",
+      "statusArchived": "Archived"
+    },
     "editor": {
       "title": "SOP Editor",
       "nameEn": "Name (English)",

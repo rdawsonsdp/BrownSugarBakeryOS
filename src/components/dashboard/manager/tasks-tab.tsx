@@ -1,13 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { Search, Plus, Edit2, Settings } from 'lucide-react'
+import { Search, Plus, Edit2, Settings, Trash2, EyeOff } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useLocaleStore } from '@/lib/stores/locale-store'
 import { useAuthStore } from '@/lib/stores/auth-store'
 import { useSOPs } from '@/lib/hooks/use-sops'
 import { useZones } from '@/lib/hooks/use-zones'
 import { useCategories } from '@/lib/hooks/use-categories'
+import { useDeleteSOP, useToggleSOPActive } from '@/lib/hooks/use-sop-mutations'
 import { useQueryClient } from '@tanstack/react-query'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -15,6 +16,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { SOPEditor } from '@/components/sop/sop-editor'
+import { DeleteSOPDialog } from '@/components/sop/delete-sop-dialog'
 import { CategoriesManager } from './categories-manager'
 import { cn } from '@/lib/utils/cn'
 import type { SOPWithSteps, Category } from '@/lib/types/database.types'
@@ -33,6 +35,10 @@ export function TasksTab() {
   const [editorOpen, setEditorOpen] = useState(false)
   const [editingSOP, setEditingSOP] = useState<SOPWithSteps | undefined>(undefined)
   const [categoriesManagerOpen, setCategoriesManagerOpen] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<SOPWithSteps | null>(null)
+
+  const deleteSOP = useDeleteSOP()
+  const toggleActive = useToggleSOPActive()
 
   const filteredSOPs = sops?.filter((sop) => {
     if (!search) return true
@@ -65,6 +71,13 @@ export function TasksTab() {
     }
   }
 
+  const confirmDelete = () => {
+    if (deleteTarget) {
+      deleteSOP.mutate(deleteTarget.id)
+      setDeleteTarget(null)
+    }
+  }
+
   // Show SOP editor full-screen
   if (editorOpen) {
     return (
@@ -92,7 +105,7 @@ export function TasksTab() {
       {/* Header with Create button */}
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-brown/60 uppercase tracking-wider">
-          {t('title')}
+          {t('currentTasks')}
         </h2>
         <div className="flex gap-2">
           <button
@@ -148,7 +161,14 @@ export function TasksTab() {
       {/* SOP List */}
       <div className="space-y-3">
         {filteredSOPs?.map((sop) => (
-          <SOPCard key={sop.id} sop={sop} categories={categories} onEdit={() => handleEdit(sop)} />
+          <SOPCard
+            key={sop.id}
+            sop={sop}
+            categories={categories}
+            onEdit={() => handleEdit(sop)}
+            onDelete={() => setDeleteTarget(sop)}
+            onDeactivate={() => toggleActive.mutate({ id: sop.id, is_active: false })}
+          />
         ))}
         {filteredSOPs?.length === 0 && (
           <p className="text-sm text-brown/40 text-center py-6">No SOPs found</p>
@@ -156,17 +176,37 @@ export function TasksTab() {
       </div>
 
       <CategoriesManager open={categoriesManagerOpen} onClose={() => setCategoriesManagerOpen(false)} />
+
+      <DeleteSOPDialog
+        open={!!deleteTarget}
+        sopName={deleteTarget ? (locale === 'es' ? deleteTarget.name_es : deleteTarget.name_en) : ''}
+        onConfirm={confirmDelete}
+        onClose={() => setDeleteTarget(null)}
+      />
     </div>
   )
 }
 
 const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const
 
-function SOPCard({ sop, categories, onEdit }: { sop: SOPWithSteps; categories: Category[]; onEdit: () => void }) {
+function SOPCard({
+  sop,
+  categories,
+  onEdit,
+  onDelete,
+  onDeactivate,
+}: {
+  sop: SOPWithSteps
+  categories: Category[]
+  onEdit: () => void
+  onDelete: () => void
+  onDeactivate: () => void
+}) {
   const [expanded, setExpanded] = useState(false)
   const { locale } = useLocaleStore()
   const t = useTranslations('sop')
   const te = useTranslations('sop.editor')
+  const tl = useTranslations('sop.library')
   const name = locale === 'es' ? sop.name_es : sop.name_en
   const description = locale === 'es' ? sop.description_es : sop.description_en
 
@@ -233,14 +273,32 @@ function SOPCard({ sop, categories, onEdit }: { sop: SOPWithSteps; categories: C
               </div>
             ))}
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={(e) => { e.stopPropagation(); onEdit() }}
-            className="mt-3 gap-1 text-brown/50"
-          >
-            <Edit2 className="w-3.5 h-3.5" /> {t('editor.title')}
-          </Button>
+          <div className="flex gap-2 mt-3 flex-wrap">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => { e.stopPropagation(); onEdit() }}
+              className="gap-1 text-brown/50"
+            >
+              <Edit2 className="w-3.5 h-3.5" /> {t('editor.title')}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => { e.stopPropagation(); onDeactivate() }}
+              className="gap-1 text-brown/40"
+            >
+              <EyeOff className="w-3.5 h-3.5" /> {tl('deactivate')}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => { e.stopPropagation(); onDelete() }}
+              className="gap-1 text-red/60"
+            >
+              <Trash2 className="w-3.5 h-3.5" /> {tl('delete')}
+            </Button>
+          </div>
         </CardContent>
       )}
     </Card>

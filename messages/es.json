@@ -79,6 +79,8 @@
   "manager": {
     "overview": "Resumen",
     "myTeam": "Mi Equipo",
+    "currentTasks": "Tareas Actuales",
+    "library": "Biblioteca",
     "allTasks": "Todas las Tareas",
     "zoneHealth": "Salud de Zona",
     "completion": "{percent}% completado",
@@ -90,7 +92,9 @@
     "tasksOverdue": "{count} atrasadas",
     "staff": {
       "addStaff": "Agregar Personal",
+      "addStaffOrRole": "Agregar Personal o Rol",
       "editStaff": "Editar Personal",
+      "displayNameRequired": "El nombre para mostrar es obligatorio",
       "firstName": "Nombre",
       "lastName": "Apellido",
       "displayName": "Nombre para Mostrar",
@@ -113,16 +117,39 @@
       "firstNameRequired": "El nombre es obligatorio",
       "lastNameRequired": "El apellido es obligatorio",
       "saved": "Personal guardado",
-      "noStaff": "No hay personal en esta zona"
+      "noStaff": "No hay personal en esta zona",
+      "deleteTitle": "Eliminar",
+      "deleteConfirm": "¿Estás seguro de que quieres eliminar a {name}? Esta acción no se puede deshacer."
     }
   },
   "sop": {
     "title": "Procedimientos Operativos Estándar",
+    "currentTasks": "Tareas Actuales",
     "steps": "Pasos",
     "step": "Paso {number}",
     "critical": "Tarea Crítica",
     "photoRequired": "Foto Requerida",
     "allZones": "Todas las Zonas",
+    "library": {
+      "title": "Biblioteca de POEs",
+      "all": "Todos",
+      "active": "Activos",
+      "inactive": "Inactivos",
+      "showInactive": "Mostrar Inactivos",
+      "delete": "Eliminar POE",
+      "deleteConfirm": "¿Estás seguro de que quieres eliminar \"{name}\"? Se desactivará y podrá restaurarse desde la biblioteca.",
+      "deactivate": "Desactivar",
+      "reactivate": "Reactivar",
+      "saveForLater": "¿Guardar para después?",
+      "saveForLaterMessage": "¿Deseas guardar este POE en tu biblioteca como borrador?",
+      "saveAsDraft": "Guardar como Borrador",
+      "discard": "Descartar",
+      "keepEditing": "Seguir Editando",
+      "empty": "No hay POEs en tu biblioteca. Crea uno para comenzar.",
+      "statusPublished": "Publicado",
+      "statusDraft": "Borrador",
+      "statusArchived": "Archivado"
+    },
     "editor": {
       "title": "Editor de POE",
       "nameEn": "Nombre (Inglés)",

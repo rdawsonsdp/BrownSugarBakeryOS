@@ -6,13 +6,24 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const zoneId = searchParams.get('zone_id')
   const category = searchParams.get('category')
+  const library = searchParams.get('library')
+  const showInactive = searchParams.get('show_inactive')
   const status = searchParams.get('status') || 'published'
 
   let query = supabase
     .from('sops')
     .select('*, sop_steps(*)')
-    .eq('status', status)
     .order('created_at', { ascending: false })
+
+  if (library === 'true') {
+    // Library mode: show all statuses, filter by is_active unless show_inactive
+    if (showInactive !== 'true') {
+      query = query.eq('is_active', true)
+    }
+  } else {
+    // Default mode: only published + active SOPs
+    query = query.eq('status', status).eq('is_active', true)
+  }
 
   if (zoneId) query = query.eq('zone_id', zoneId)
   if (category) query = query.eq('category', category)
@@ -116,4 +127,49 @@ export async function PUT(request: NextRequest) {
     .single()
 
   return NextResponse.json(completeSop)
+}
+
+export async function PATCH(request: NextRequest) {
+  const supabase = await createClient()
+  const body = await request.json()
+  const { id, is_active } = body
+
+  if (!id) {
+    return NextResponse.json({ error: 'SOP id required' }, { status: 400 })
+  }
+
+  const { data, error } = await supabase
+    .from('sops')
+    .update({ is_active, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  return NextResponse.json(data)
+}
+
+export async function DELETE(request: NextRequest) {
+  const supabase = await createClient()
+  const { searchParams } = new URL(request.url)
+  const id = searchParams.get('id')
+
+  if (!id) {
+    return NextResponse.json({ error: 'SOP id required' }, { status: 400 })
+  }
+
+  // Soft-delete: set is_active to false
+  const { error } = await supabase
+    .from('sops')
+    .update({ is_active: false, updated_at: new Date().toISOString() })
+    .eq('id', id)
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  return NextResponse.json({ success: true })
 }

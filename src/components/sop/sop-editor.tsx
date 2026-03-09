@@ -14,6 +14,7 @@ import { AIChat } from './ai-chat'
 import { useAuthStore } from '@/lib/stores/auth-store'
 import { useLocaleStore } from '@/lib/stores/locale-store'
 import { useCategories, useCreateCategory } from '@/lib/hooks/use-categories'
+import { useZones } from '@/lib/hooks/use-zones'
 import type { SOPWithSteps } from '@/lib/types/database.types'
 import type { AIGeneratedSOP } from '@/lib/types/ai-chat.types'
 
@@ -22,6 +23,7 @@ interface SOPEditorProps {
   zoneId: string
   onSave: (data: Record<string, unknown>) => void
   onCancel: () => void
+  onCancelWithPrompt?: (data: Record<string, unknown>) => void
 }
 
 interface StepDraft {
@@ -36,13 +38,14 @@ interface StepDraft {
 
 type InputMode = 'text' | 'voice' | 'photo' | 'ai'
 
-export function SOPEditor({ sop, zoneId, onSave, onCancel }: SOPEditorProps) {
+export function SOPEditor({ sop, zoneId, onSave, onCancel, onCancelWithPrompt }: SOPEditorProps) {
   const t = useTranslations('sop.editor')
   const [nameEn, setNameEn] = useState(sop?.name_en || '')
   const [nameEs, setNameEs] = useState(sop?.name_es || '')
   const [descEn, setDescEn] = useState(sop?.description_en || '')
   const [descEs, setDescEs] = useState(sop?.description_es || '')
   const [category, setCategory] = useState(sop?.category || 'opening')
+  const [selectedZoneId, setSelectedZoneId] = useState(sop?.zone_id || zoneId)
   const [isCritical, setIsCritical] = useState(sop?.is_critical || false)
   const [daysOfWeek, setDaysOfWeek] = useState<number[]>(sop?.days_of_week ?? [])
   const [steps, setSteps] = useState<StepDraft[]>(
@@ -65,6 +68,7 @@ export function SOPEditor({ sop, zoneId, onSave, onCancel }: SOPEditorProps) {
   const zone = useAuthStore((s) => s.zone)
   const { locale } = useLocaleStore()
   const { data: categories = [] } = useCategories()
+  const { data: zones = [] } = useZones()
   const createCategory = useCreateCategory()
 
   const handleAIGenerated = useCallback((aiSop: AIGeneratedSOP) => {
@@ -101,27 +105,39 @@ export function SOPEditor({ sop, zoneId, onSave, onCancel }: SOPEditorProps) {
     setSteps(steps.map((s, i) => i === index ? { ...s, [field]: value } : s))
   }
 
+  const buildSaveData = (status: 'draft' | 'published') => ({
+    id: sop?.id,
+    name_en: nameEn,
+    name_es: nameEs || nameEn,
+    description_en: descEn || null,
+    description_es: descEs || descEn || null,
+    category,
+    zone_id: selectedZoneId,
+    is_critical: isCritical,
+    days_of_week: daysOfWeek.length > 0 ? daysOfWeek : null,
+    status,
+    steps: steps.map((s) => ({
+      title_en: s.title_en,
+      title_es: s.title_es || s.title_en,
+      description_en: s.description_en || null,
+      description_es: s.description_es || s.description_en || null,
+      requires_photo: s.requires_photo,
+      estimated_minutes: s.estimated_minutes,
+    })),
+  })
+
   const handleSave = (status: 'draft' | 'published') => {
-    onSave({
-      id: sop?.id,
-      name_en: nameEn,
-      name_es: nameEs,
-      description_en: descEn || null,
-      description_es: descEs || null,
-      category,
-      zone_id: zoneId,
-      is_critical: isCritical,
-      days_of_week: daysOfWeek.length > 0 ? daysOfWeek : null,
-      status,
-      steps: steps.map((s) => ({
-        title_en: s.title_en,
-        title_es: s.title_es,
-        description_en: s.description_en || null,
-        description_es: s.description_es || null,
-        requires_photo: s.requires_photo,
-        estimated_minutes: s.estimated_minutes,
-      })),
-    })
+    onSave(buildSaveData(status))
+  }
+
+  const handleCancelClick = () => {
+    // If there's content and a prompt handler, ask to save for later
+    const hasContent = nameEn.trim() || steps.some(s => s.title_en.trim())
+    if (hasContent && !sop && onCancelWithPrompt) {
+      onCancelWithPrompt(buildSaveData('draft'))
+    } else {
+      onCancel()
+    }
   }
 
   // Handle voice transcript — append to field value
@@ -143,16 +159,12 @@ export function SOPEditor({ sop, zoneId, onSave, onCancel }: SOPEditorProps) {
   const buildFieldOptions = () => {
     const options: { key: string; label: string }[] = [
       { key: 'nameEn', label: t('photoFieldNameEn') },
-      { key: 'nameEs', label: t('photoFieldNameEs') },
       { key: 'descEn', label: t('photoFieldDescEn') },
-      { key: 'descEs', label: t('photoFieldDescEs') },
     ]
     steps.forEach((_, i) => {
       options.push(
-        { key: `step_${i}_title_en`, label: t('photoFieldStepTitle', { number: i + 1 }) + ' (EN)' },
-        { key: `step_${i}_title_es`, label: t('photoFieldStepTitle', { number: i + 1 }) + ' (ES)' },
-        { key: `step_${i}_desc_en`, label: t('photoFieldStepDesc', { number: i + 1 }) + ' (EN)' },
-        { key: `step_${i}_desc_es`, label: t('photoFieldStepDesc', { number: i + 1 }) + ' (ES)' },
+        { key: `step_${i}_title_en`, label: t('photoFieldStepTitle', { number: i + 1 }) },
+        { key: `step_${i}_desc_en`, label: t('photoFieldStepDesc', { number: i + 1 }) },
       )
     })
     return options
@@ -282,46 +294,25 @@ export function SOPEditor({ sop, zoneId, onSave, onCancel }: SOPEditorProps) {
       {/* Standard form fields — hidden when AI mode is active */}
       {inputMode !== 'ai' && (<>
 
-      {/* Bilingual name fields */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="text-xs font-medium text-brown/60 mb-1 block">{t('nameEn')}</label>
-          <div className="flex gap-1.5">
-            <Input value={nameEn} onChange={(e) => setNameEn(e.target.value)} className="flex-1" />
-            {inputMode === 'voice' && (
-              <VoiceInput lang="en-US" onTranscript={appendToField(setNameEn)} />
-            )}
-          </div>
-        </div>
-        <div>
-          <label className="text-xs font-medium text-brown/60 mb-1 block">{t('nameEs')}</label>
-          <div className="flex gap-1.5">
-            <Input value={nameEs} onChange={(e) => setNameEs(e.target.value)} className="flex-1" />
-            {inputMode === 'voice' && (
-              <VoiceInput lang="es-ES" onTranscript={appendToField(setNameEs)} />
-            )}
-          </div>
+      {/* SOP Name — full width, English by default */}
+      <div>
+        <label className="text-xs font-medium text-brown/60 mb-1 block">{t('nameEn')}</label>
+        <div className="flex gap-1.5">
+          <Input value={nameEn} onChange={(e) => setNameEn(e.target.value)} className="flex-1" placeholder="SOP Name" />
+          {inputMode === 'voice' && (
+            <VoiceInput lang="en-US" onTranscript={appendToField(setNameEn)} />
+          )}
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="text-xs font-medium text-brown/60 mb-1 block">{t('descriptionEn')}</label>
-          <div className="flex gap-1.5">
-            <Input value={descEn} onChange={(e) => setDescEn(e.target.value)} className="flex-1" />
-            {inputMode === 'voice' && (
-              <VoiceInput lang="en-US" onTranscript={appendToField(setDescEn)} />
-            )}
-          </div>
-        </div>
-        <div>
-          <label className="text-xs font-medium text-brown/60 mb-1 block">{t('descriptionEs')}</label>
-          <div className="flex gap-1.5">
-            <Input value={descEs} onChange={(e) => setDescEs(e.target.value)} className="flex-1" />
-            {inputMode === 'voice' && (
-              <VoiceInput lang="es-ES" onTranscript={appendToField(setDescEs)} />
-            )}
-          </div>
+      {/* Description — full width row */}
+      <div>
+        <label className="text-xs font-medium text-brown/60 mb-1 block">{t('descriptionEn')}</label>
+        <div className="flex gap-1.5">
+          <Input value={descEn} onChange={(e) => setDescEn(e.target.value)} className="flex-1" placeholder="Describe this procedure..." />
+          {inputMode === 'voice' && (
+            <VoiceInput lang="en-US" onTranscript={appendToField(setDescEn)} />
+          )}
         </div>
       </div>
 
@@ -335,6 +326,27 @@ export function SOPEditor({ sop, zoneId, onSave, onCancel }: SOPEditorProps) {
           <ImageIcon className="w-4 h-4" /> {t('modePhoto')} — {t('photoCapture')} / {t('photoUpload')}
         </Button>
       )}
+
+      {/* Zone selector */}
+      <div>
+        <label className="text-xs font-medium text-brown/60 mb-2 block">Zone</label>
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {zones.map((z) => (
+            <button
+              key={z.id}
+              type="button"
+              onClick={() => setSelectedZoneId(z.id)}
+              className={cn(
+                'px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-colors',
+                selectedZoneId === z.id ? 'text-white' : 'bg-brown/5 text-brown/60'
+              )}
+              style={selectedZoneId === z.id ? { backgroundColor: z.color } : undefined}
+            >
+              {locale === 'es' ? z.name_es : z.name_en}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* Category and flags */}
       <div className="flex gap-3 items-end">
@@ -385,7 +397,7 @@ export function SOPEditor({ sop, zoneId, onSave, onCancel }: SOPEditorProps) {
                     className="w-full px-4 py-2.5 text-left text-sm text-brown/60 hover:bg-brown/5 flex items-center gap-2"
                   >
                     <Plus className="w-4 h-4" />
-                    {locale === 'es' ? 'Crear' : 'Create'} &ldquo;{categorySearch.trim()}&rdquo;
+                    Create &ldquo;{categorySearch.trim()}&rdquo;
                   </button>
                 )}
                 {categorySearch.trim() && filteredCategories.length > 0 && !filteredCategories.some(c => (locale === 'es' ? c.name_es : c.name_en).toLowerCase() === categorySearch.trim().toLowerCase()) && (
@@ -395,7 +407,7 @@ export function SOPEditor({ sop, zoneId, onSave, onCancel }: SOPEditorProps) {
                     className="w-full px-4 py-2.5 text-left text-sm text-brown/60 hover:bg-brown/5 flex items-center gap-2 border-t border-brown/10"
                   >
                     <Plus className="w-4 h-4" />
-                    {locale === 'es' ? 'Crear' : 'Create'} &ldquo;{categorySearch.trim()}&rdquo;
+                    Create &ldquo;{categorySearch.trim()}&rdquo;
                   </button>
                 )}
               </div>
@@ -473,22 +485,11 @@ export function SOPEditor({ sop, zoneId, onSave, onCancel }: SOPEditorProps) {
                       <Input
                         value={step.title_en}
                         onChange={(e) => updateStep(index, 'title_en', e.target.value)}
-                        placeholder="Step title (EN)"
+                        placeholder="Step title"
                         className="text-sm h-9 flex-1"
                       />
                       {inputMode === 'voice' && (
                         <VoiceInput lang="en-US" onTranscript={appendToStep(index, 'title_en')} />
-                      )}
-                    </div>
-                    <div className="flex gap-1.5">
-                      <Input
-                        value={step.title_es}
-                        onChange={(e) => updateStep(index, 'title_es', e.target.value)}
-                        placeholder="Título del paso (ES)"
-                        className="text-sm h-9 flex-1"
-                      />
-                      {inputMode === 'voice' && (
-                        <VoiceInput lang="es-ES" onTranscript={appendToStep(index, 'title_es')} />
                       )}
                     </div>
                   </div>
@@ -498,22 +499,11 @@ export function SOPEditor({ sop, zoneId, onSave, onCancel }: SOPEditorProps) {
                     <Input
                       value={step.description_en}
                       onChange={(e) => updateStep(index, 'description_en', e.target.value)}
-                      placeholder="Description (EN)"
+                      placeholder="Description (optional)"
                       className="text-xs h-8 flex-1"
                     />
                     {inputMode === 'voice' && (
                       <VoiceInput lang="en-US" onTranscript={appendToStep(index, 'description_en')} className="w-8 h-8" />
-                    )}
-                  </div>
-                  <div className="flex gap-1.5">
-                    <Input
-                      value={step.description_es}
-                      onChange={(e) => updateStep(index, 'description_es', e.target.value)}
-                      placeholder="Descripción (ES)"
-                      className="text-xs h-8 flex-1"
-                    />
-                    {inputMode === 'voice' && (
-                      <VoiceInput lang="es-ES" onTranscript={appendToStep(index, 'description_es')} className="w-8 h-8" />
                     )}
                   </div>
                 </div>
@@ -547,7 +537,7 @@ export function SOPEditor({ sop, zoneId, onSave, onCancel }: SOPEditorProps) {
 
       {/* Action buttons */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-brown/10 px-4 pt-4 pb-16 flex gap-3">
-        <Button variant="ghost" onClick={onCancel} className="flex-1">{t('saveDraft')}</Button>
+        <Button variant="ghost" onClick={handleCancelClick} className="flex-1">Cancel</Button>
         <Button variant="secondary" onClick={() => handleSave('draft')} className="flex-1">{t('saveDraft')}</Button>
         <Button variant="primary" onClick={() => handleSave('published')} className="flex-1">{t('publish')}</Button>
       </div>

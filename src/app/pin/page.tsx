@@ -1,31 +1,25 @@
 'use client'
 
-import { useRouter, useParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { useTranslations } from 'next-intl'
 import { useAuthStore } from '@/lib/stores/auth-store'
-import { useLocaleStore } from '@/lib/stores/locale-store'
 import { PinPad } from '@/components/pin/pin-pad'
-import { ZoneHeader } from '@/components/layout/zone-header'
 import { useCallback, useEffect, useState } from 'react'
 
 export default function PinEntryPage() {
   const router = useRouter()
-  const params = useParams()
   const t = useTranslations('pin')
-  const { zone, role, login } = useAuthStore()
-  const { locale } = useLocaleStore()
+  const { roleType, setRole } = useAuthStore()
   const [error, setError] = useState(false)
 
   useEffect(() => {
-    if (!zone || !role) {
+    if (!roleType) {
       router.push('/role')
     }
-  }, [zone, role, router])
+  }, [roleType, router])
 
-  if (!zone || !role) {
-    return null
-  }
+  if (!roleType) return null
 
   const handlePinSubmit = useCallback(async (pin: string): Promise<boolean> => {
     try {
@@ -34,8 +28,7 @@ export default function PinEntryPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           pin,
-          zone_id: zone.id,
-          role_id: role.id,
+          role_type: roleType,
         }),
       })
 
@@ -45,32 +38,24 @@ export default function PinEntryPage() {
       }
 
       const data = await res.json()
-      login({
+
+      // Store the verified staff info temporarily — zone selection comes next
+      useAuthStore.getState().login({
         staff: data.staff,
         zone: data.zone,
         role: data.role,
         shift: data.shift,
       })
 
-      // Set locale based on staff preference
-      if (data.staff.preferred_language) {
-        useLocaleStore.getState().setLocale(data.staff.preferred_language)
-      }
-
-      // Navigate to appropriate dashboard
-      const dashPath = role.is_manager
-        ? `/zone/${params.zoneSlug}/manager`
-        : `/zone/${params.zoneSlug}/staff`
-
-      setTimeout(() => router.push(dashPath), 600) // Wait for success animation
+      setTimeout(() => router.push('/zone'), 600)
       return true
     } catch {
       setError(true)
       return false
     }
-  }, [zone, role, login, router, params.zoneSlug])
+  }, [roleType, router])
 
-  const roleName = locale === 'es' ? role.name_es : role.name_en
+  const roleLabel = roleType === 'manager' ? 'Shift Manager' : 'Staff'
 
   return (
     <motion.div
@@ -80,14 +65,18 @@ export default function PinEntryPage() {
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
       className="min-h-dvh bg-cream"
     >
-      <ZoneHeader
-        zoneName_en={zone.name_en}
-        zoneName_es={zone.name_es}
-        zoneColor={zone.color}
-        roleName={roleName}
-        showBack
-        backPath="/zone"
-      />
+      {/* Simple header */}
+      <div className="bg-brown text-white px-4 pt-4 pb-5 safe-top">
+        <div className="flex items-center justify-between mb-2">
+          <button
+            onClick={() => router.push('/role')}
+            className="p-2 -ml-2 rounded-lg hover:bg-white/10 transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+          </button>
+          <span className="text-sm font-bold text-white/70">{roleLabel}</span>
+        </div>
+      </div>
 
       <div className="max-w-sm mx-auto px-4 py-12 flex flex-col items-center">
         <motion.div
@@ -108,7 +97,7 @@ export default function PinEntryPage() {
           )}
         </motion.div>
 
-        <PinPad onSubmit={handlePinSubmit} zoneColor={zone.color} />
+        <PinPad onSubmit={handlePinSubmit} zoneColor="#570522" />
       </div>
     </motion.div>
   )

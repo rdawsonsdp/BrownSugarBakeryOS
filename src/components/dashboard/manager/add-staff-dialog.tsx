@@ -28,9 +28,9 @@ interface AddStaffDialogProps {
 export function AddStaffDialog({ open, onClose, onSave, staff, roles, isLoading }: AddStaffDialogProps) {
   const t = useTranslations('manager.staff')
 
+  const [displayName, setDisplayName] = useState('')
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
-  const [displayName, setDisplayName] = useState('')
   const [pin, setPin] = useState('')
   const [confirmPin, setConfirmPin] = useState('')
   const [roleId, setRoleId] = useState('')
@@ -42,15 +42,15 @@ export function AddStaffDialog({ open, onClose, onSave, staff, roles, isLoading 
   useEffect(() => {
     if (open) {
       if (staff) {
+        setDisplayName(staff.display_name)
         setFirstName(staff.first_name)
         setLastName(staff.last_name)
-        setDisplayName(staff.display_name)
         setRoleId(staff.role_id)
         setLanguage(staff.preferred_language)
       } else {
+        setDisplayName('')
         setFirstName('')
         setLastName('')
-        setDisplayName('')
         setRoleId(roles.find((r) => !r.is_manager)?.id || '')
         setLanguage('en')
       }
@@ -60,20 +60,17 @@ export function AddStaffDialog({ open, onClose, onSave, staff, roles, isLoading 
     }
   }, [open, staff, roles])
 
-  // Auto-generate display name
+  // Auto-generate display name from first+last if both are provided
   useEffect(() => {
-    if (!isEdit || !staff?.display_name) {
-      if (firstName && lastName) {
-        setDisplayName(`${firstName} ${lastName.charAt(0)}.`)
-      }
+    if (!isEdit && firstName && lastName) {
+      setDisplayName(`${firstName} ${lastName.charAt(0)}.`)
     }
-  }, [firstName, lastName, isEdit, staff?.display_name])
+  }, [firstName, lastName, isEdit])
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {}
 
-    if (!firstName.trim()) newErrors.firstName = t('firstNameRequired')
-    if (!lastName.trim()) newErrors.lastName = t('lastNameRequired')
+    if (!displayName.trim()) newErrors.displayName = t('displayNameRequired')
 
     if (!isEdit && !pin) {
       newErrors.pin = t('pinRequired')
@@ -92,10 +89,14 @@ export function AddStaffDialog({ open, onClose, onSave, staff, roles, isLoading 
   const handleSubmit = () => {
     if (!validate()) return
 
+    // Use display name for first/last if not provided
+    const finalFirstName = firstName.trim() || displayName.trim()
+    const finalLastName = lastName.trim() || ''
+
     onSave({
       id: staff?.id,
-      first_name: firstName.trim(),
-      last_name: lastName.trim(),
+      first_name: finalFirstName,
+      last_name: finalLastName || '-',
       display_name: displayName.trim(),
       role_id: roleId,
       preferred_language: language,
@@ -109,35 +110,41 @@ export function AddStaffDialog({ open, onClose, onSave, staff, roles, isLoading 
   return (
     <Dialog open={open} onClose={onClose}>
       <DialogHeader>
-        <DialogTitle>{isEdit ? t('editStaff') : t('addStaff')}</DialogTitle>
+        <DialogTitle>{isEdit ? t('editStaff') : t('addStaffOrRole')}</DialogTitle>
       </DialogHeader>
       <DialogContent className="space-y-4">
-        {/* Name fields */}
+        {/* Display name / Position name — primary field */}
+        <div>
+          <label className="text-xs font-medium text-brown/60 mb-1 block">{t('displayName')}</label>
+          <Input
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            placeholder="e.g. Cashier 1, Maria G., Baker 2"
+            className={errors.displayName ? 'border-red' : ''}
+          />
+          {errors.displayName && <p className="text-xs text-red mt-1">{errors.displayName}</p>}
+        </div>
+
+        {/* Name fields — optional */}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-xs font-medium text-brown/60 mb-1 block">{t('firstName')}</label>
+            <label className="text-xs font-medium text-brown/60 mb-1 block">
+              {t('firstName')} <span className="text-brown/30">(optional)</span>
+            </label>
             <Input
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
-              className={errors.firstName ? 'border-red' : ''}
             />
-            {errors.firstName && <p className="text-xs text-red mt-1">{errors.firstName}</p>}
           </div>
           <div>
-            <label className="text-xs font-medium text-brown/60 mb-1 block">{t('lastName')}</label>
+            <label className="text-xs font-medium text-brown/60 mb-1 block">
+              {t('lastName')} <span className="text-brown/30">(optional)</span>
+            </label>
             <Input
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
-              className={errors.lastName ? 'border-red' : ''}
             />
-            {errors.lastName && <p className="text-xs text-red mt-1">{errors.lastName}</p>}
           </div>
-        </div>
-
-        {/* Display name */}
-        <div>
-          <label className="text-xs font-medium text-brown/60 mb-1 block">{t('displayName')}</label>
-          <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
         </div>
 
         {/* PIN fields */}
@@ -239,9 +246,9 @@ export function AddStaffDialog({ open, onClose, onSave, staff, roles, isLoading 
         </div>
       </DialogContent>
       <DialogFooter>
-        <Button variant="ghost" onClick={onClose}>{t('cancel' as 'addStaff')}</Button>
+        <Button variant="ghost" onClick={onClose}>Cancel</Button>
         <Button variant="primary" onClick={handleSubmit} disabled={isLoading}>
-          {isLoading ? '...' : (isEdit ? t('save' as 'addStaff') : t('addStaff'))}
+          {isLoading ? '...' : (isEdit ? 'Save' : t('addStaffOrRole'))}
         </Button>
       </DialogFooter>
     </Dialog>

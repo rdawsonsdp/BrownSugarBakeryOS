@@ -3,55 +3,40 @@ import { createClient } from '@/lib/supabase/server'
 
 export async function POST(request: NextRequest) {
   try {
-    const { pin, zone_id, role_id } = await request.json()
+    const body = await request.json()
+    const { pin, zone_id, role_id, role_type } = body
 
-    if (!pin || !zone_id || !role_id) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    if (!pin) {
+      return NextResponse.json({ error: 'Missing PIN' }, { status: 400 })
     }
 
     const supabase = await createClient()
 
-    // Find staff matching the PIN in the given zone
-    // We check all staff in the zone and verify PIN via pgcrypto
-    const { data: staff, error: staffError } = await supabase.rpc('verify_pin', {
-      p_pin: pin,
-      p_zone_id: zone_id,
-      p_role_id: role_id,
-    })
+    // New flow: verify PIN across all zones for a role type (no zone required)
+    if (role_type && !zone_id) {
+      const isManager = role_type === 'manager'
 
-    if (staffError) {
-      // Fallback: query directly if RPC not available
+      // Get all active staff
       const { data: staffList, error: listError } = await supabase
         .from('staff')
         .select('*, role:roles(*)')
-        .eq('zone_id', zone_id)
         .eq('is_active', true)
 
       if (listError || !staffList || staffList.length === 0) {
         return NextResponse.json({ error: 'Invalid PIN' }, { status: 401 })
       }
 
-      // Verify PIN using SQL crypt function
+      // Verify PIN against each staff member
       for (const s of staffList) {
         const { data: match } = await supabase
           .rpc('check_pin', { p_pin: pin, p_hash: s.pin_hash })
 
         if (match === true) {
-          // Check if role matches (manager PIN can access both roles)
-          const isManager = s.role?.is_manager || false
-          const { data: requestedRole } = await supabase
-            .from('roles')
-            .select('*')
-            .eq('id', role_id)
-            .single()
-
-          if (!requestedRole) {
-            return NextResponse.json({ error: 'Invalid role' }, { status: 401 })
-          }
+          const staffIsManager = s.role?.is_manager || false
 
           // Managers can access any role, staff can only access staff role
-          if (!isManager && requestedRole.is_manager) {
-            continue // This staff member can't access manager role
+          if (!staffIsManager && isManager) {
+            continue
           }
 
           // Update streak
@@ -73,11 +58,97 @@ export async function POST(request: NextRequest) {
               .eq('id', s.id)
           }
 
-          // Determine shift type based on current hour
+          // Get the role for this staff member's zone matching the requested role type
+          const { data: matchedRole } = await supabase
+            .from('roles')
+            .select('*')
+            .eq('zone_id', s.zone_id)
+            .eq('is_manager', isManager)
+            .single()
+
+          // Get zone info
+          const { data: zone } = await supabase
+            .from('zones')
+            .select('*')
+            .eq('id', s.zone_id)
+            .single()
+
+          return NextResponse.json({
+            staff: { ...s, ...streakUpdate, pin_hash: undefined },
+            zone,
+            role: matchedRole || s.role,
+            shift: null, // Shift created after zone selection
+          })
+        }
+      }
+
+      return NextResponse.json({ error: 'Invalid PIN' }, { status: 401 })
+    }
+
+    // Legacy flow: verify PIN for a specific zone + role
+    if (!zone_id || !role_id) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    }
+
+    // Find staff matching the PIN in the given zone
+    const { data: staff, error: staffError } = await supabase.rpc('verify_pin', {
+      p_pin: pin,
+      p_zone_id: zone_id,
+      p_role_id: role_id,
+    })
+
+    if (staffError) {
+      const { data: staffList, error: listError } = await supabase
+        .from('staff')
+        .select('*, role:roles(*)')
+        .eq('zone_id', zone_id)
+        .eq('is_active', true)
+
+      if (listError || !staffList || staffList.length === 0) {
+        return NextResponse.json({ error: 'Invalid PIN' }, { status: 401 })
+      }
+
+      for (const s of staffList) {
+        const { data: match } = await supabase
+          .rpc('check_pin', { p_pin: pin, p_hash: s.pin_hash })
+
+        if (match === true) {
+          const isManager = s.role?.is_manager || false
+          const { data: requestedRole } = await supabase
+            .from('roles')
+            .select('*')
+            .eq('id', role_id)
+            .single()
+
+          if (!requestedRole) {
+            return NextResponse.json({ error: 'Invalid role' }, { status: 401 })
+          }
+
+          if (!isManager && requestedRole.is_manager) {
+            continue
+          }
+
+          const today = new Date().toISOString().split('T')[0]
+          const streakUpdate = s.last_login_date === today
+            ? {}
+            : {
+                streak_count: s.last_login_date &&
+                  new Date(today).getTime() - new Date(s.last_login_date).getTime() <= 86400000 * 2
+                    ? s.streak_count + 1
+                    : 1,
+                last_login_date: today,
+              }
+
+          if (Object.keys(streakUpdate).length > 0) {
+            await supabase
+              .from('staff')
+              .update(streakUpdate)
+              .eq('id', s.id)
+          }
+
           const hour = new Date().getHours()
           const shiftType = hour < 11 ? 'opening' : hour < 15 ? 'mid' : 'closing'
 
-          // Create or resume shift
           const { data: existingShift } = await supabase
             .from('shifts')
             .select('*')
@@ -105,10 +176,8 @@ export async function POST(request: NextRequest) {
             }
             shift = newShift
 
-            // Create pending task completions for this shift
             const dayOfWeek = new Date().getDay()
 
-            // Get IDs of SOPs NOT scheduled for today
             const { data: excludedSOPs } = await supabase
               .from('sops')
               .select('id')
@@ -125,7 +194,6 @@ export async function POST(request: NextRequest) {
               .eq('shift_type', shiftType)
               .eq('is_active', true)
 
-            // Filter out templates linked to excluded SOPs
             const todayTemplates = templates?.filter((t) =>
               !t.sop_id || !excludedIds.has(t.sop_id)
             ) ?? []
@@ -142,7 +210,6 @@ export async function POST(request: NextRequest) {
             }
           }
 
-          // Get zone info
           const { data: zone } = await supabase
             .from('zones')
             .select('*')
@@ -161,7 +228,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid PIN' }, { status: 401 })
     }
 
-    // If RPC worked (future enhancement)
     if (!staff || staff.length === 0) {
       return NextResponse.json({ error: 'Invalid PIN' }, { status: 401 })
     }

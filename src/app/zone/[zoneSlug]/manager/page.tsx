@@ -12,12 +12,14 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { OverviewTab } from '@/components/dashboard/manager/overview-tab'
 import { TeamTab } from '@/components/dashboard/manager/team-tab'
 import { TasksTab } from '@/components/dashboard/manager/tasks-tab'
+import { SOPLibrary } from '@/components/sop/sop-library'
 import { Button } from '@/components/ui/button'
 import { LogOut } from 'lucide-react'
 
 export default function ManagerDashboardPage() {
   const router = useRouter()
   const t = useTranslations('manager')
+  const td = useTranslations('dashboard')
   const { locale } = useLocaleStore()
   const { staff, zone, role, shift, isAuthenticated, logout } = useStaffAuth()
   const [activeTab, setActiveTab] = useState('overview')
@@ -54,7 +56,7 @@ export default function ManagerDashboardPage() {
         roleName={roleName}
         staffName={staff.display_name}
         streak={staff.streak_count}
-        shiftType={useTranslations('dashboard')(`shift.${shift.shift_type}` as 'shift.opening')}
+        shiftType={td(`shift.${shift.shift_type}` as 'shift.opening')}
       />
 
       <div className="max-w-lg mx-auto">
@@ -63,7 +65,8 @@ export default function ManagerDashboardPage() {
             <TabsList>
               <TabsTrigger value="overview">{t('overview')}</TabsTrigger>
               <TabsTrigger value="team">{t('myTeam')}</TabsTrigger>
-              <TabsTrigger value="tasks">{t('allTasks')}</TabsTrigger>
+              <TabsTrigger value="tasks">{t('currentTasks')}</TabsTrigger>
+              <TabsTrigger value="library">{t('library')}</TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview">
@@ -76,6 +79,10 @@ export default function ManagerDashboardPage() {
 
             <TabsContent value="tasks">
               <TasksTab />
+            </TabsContent>
+
+            <TabsContent value="library">
+              <SOPLibrary />
             </TabsContent>
           </Tabs>
         </div>

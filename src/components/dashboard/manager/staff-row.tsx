@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { User, Flame, AlertTriangle, MoreVertical } from 'lucide-react'
+import { User, Flame, AlertTriangle, MoreVertical, Trash2 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils/cn'
@@ -18,11 +18,12 @@ interface StaffRowProps {
   onEdit?: () => void
   onDeactivate?: () => void
   onReactivate?: () => void
+  onDelete?: () => void
 }
 
 export function StaffRow({
   name, completionPercent, streak, lastActive, overdueCount,
-  roleName, isActive = true, onEdit, onDeactivate, onReactivate,
+  roleName, isActive = true, onEdit, onDeactivate, onReactivate, onDelete,
 }: StaffRowProps) {
   const t = useTranslations('manager.staff')
   const [menuOpen, setMenuOpen] = useState(false)
@@ -83,6 +84,17 @@ export function StaffRow({
           )}>
             {completionPercent}%
           </div>
+        )}
+
+        {/* Delete button */}
+        {onDelete && (
+          <button
+            onClick={onDelete}
+            className="p-1.5 rounded-lg text-brown/30 hover:text-red hover:bg-red/5 transition-colors"
+            title="Delete"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
         )}
 
         {/* Action menu */}
