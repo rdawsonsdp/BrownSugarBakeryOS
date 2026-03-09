@@ -62,7 +62,7 @@ Rules:
 - Choose the most appropriate category from the list above`
 }
 
-function parseGeneratedSOP(text: string): AIGeneratedSOP | null {
+function parseGeneratedSOP(text: string): AIGeneratedSOP | undefined {
   // Try extracting from ```json``` code block first
   const jsonBlockMatch = text.match(/```json\s*([\s\S]*?)```/)
   if (jsonBlockMatch) {
@@ -77,7 +77,7 @@ function parseGeneratedSOP(text: string): AIGeneratedSOP | null {
   try {
     return JSON.parse(text.trim())
   } catch {
-    return null
+    return undefined
   }
 }
 
