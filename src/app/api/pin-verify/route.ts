@@ -73,11 +73,77 @@ export async function POST(request: NextRequest) {
             .eq('id', s.zone_id)
             .single()
 
+          // For staff (non-manager), create shift immediately since zone is predetermined
+          let shift = null
+          if (!isManager && zone) {
+            const today = new Date().toISOString().split('T')[0]
+            const hour = new Date().getHours()
+            const shiftType = hour < 11 ? 'opening' : hour < 15 ? 'mid' : 'closing'
+
+            const { data: existingShift } = await supabase
+              .from('shifts')
+              .select('*')
+              .eq('staff_id', s.id)
+              .eq('shift_date', today)
+              .eq('shift_type', shiftType)
+              .single()
+
+            shift = existingShift
+
+            if (!shift) {
+              const { data: newShift } = await supabase
+                .from('shifts')
+                .insert({
+                  staff_id: s.id,
+                  zone_id: zone.id,
+                  shift_type: shiftType,
+                  shift_date: today,
+                })
+                .select()
+                .single()
+
+              shift = newShift
+
+              if (shift) {
+                const dayOfWeek = new Date().getDay()
+                const { data: excludedSOPs } = await supabase
+                  .from('sops')
+                  .select('id')
+                  .eq('zone_id', zone.id)
+                  .not('days_of_week', 'is', null)
+                  .not('days_of_week', 'cs', `{${dayOfWeek}}`)
+
+                const excludedIds = new Set(excludedSOPs?.map((es) => es.id) ?? [])
+
+                const { data: templates } = await supabase
+                  .from('task_templates')
+                  .select('*')
+                  .eq('zone_id', zone.id)
+                  .eq('shift_type', shiftType)
+                  .eq('is_active', true)
+
+                const todayTemplates = templates?.filter((tt) =>
+                  !tt.sop_id || !excludedIds.has(tt.sop_id)
+                ) ?? []
+
+                if (todayTemplates.length > 0) {
+                  const completions = todayTemplates.map((tt) => ({
+                    task_template_id: tt.id,
+                    shift_id: shift!.id,
+                    staff_id: s.id,
+                    status: 'pending' as const,
+                  }))
+                  await supabase.from('task_completions').insert(completions)
+                }
+              }
+            }
+          }
+
           return NextResponse.json({
             staff: { ...s, ...streakUpdate, pin_hash: undefined },
             zone,
             role: matchedRole || s.role,
-            shift: null, // Shift created after zone selection
+            shift, // null for managers (zone selection next), populated for staff
           })
         }
       }

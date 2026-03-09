@@ -39,7 +39,7 @@ export default function PinEntryPage() {
 
       const data = await res.json()
 
-      // Store the verified staff info temporarily — zone selection comes next
+      // Store the verified staff info
       useAuthStore.getState().login({
         staff: data.staff,
         zone: data.zone,
@@ -47,7 +47,13 @@ export default function PinEntryPage() {
         shift: data.shift,
       })
 
-      setTimeout(() => router.push('/zone'), 600)
+      // Staff go directly to dashboard (zone is predetermined)
+      // Managers go to zone selection
+      if (roleType === 'staff' && data.zone && data.shift) {
+        setTimeout(() => router.push(`/zone/${data.zone.slug}/staff`), 600)
+      } else {
+        setTimeout(() => router.push('/zone'), 600)
+      }
       return true
     } catch {
       setError(true)

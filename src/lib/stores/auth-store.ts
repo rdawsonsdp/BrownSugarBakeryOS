@@ -49,7 +49,7 @@ interface AuthState {
   isAuthenticated: boolean
   lastActivity: number
 
-  login: (data: { staff: Staff; zone: Zone; role: Role; shift: Shift }) => void
+  login: (data: { staff: Staff; zone: Zone | null; role: Role; shift: Shift | null }) => void
   logout: () => void
   setZone: (zone: Zone) => void
   setRole: (role: Role) => void
@@ -75,7 +75,7 @@ export const useAuthStore = create<AuthState>()(
           zone,
           role,
           shift,
-          isAuthenticated: true,
+          isAuthenticated: !!(staff && zone && shift),
           lastActivity: Date.now(),
         }),
 
