@@ -34,15 +34,57 @@ export function useCompleteTask() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ id, photo_url, notes }: { id: string; photo_url?: string; notes?: string }) => {
+    mutationFn: async ({ id, photo, photo_url, notes }: { id: string; photo?: File; photo_url?: string; notes?: string }) => {
       const supabase = createClient()
+
+      // Upload photo if provided
+      let finalPhotoUrl = photo_url || null
+      if (photo) {
+        const ext = photo.name.split('.').pop() || 'jpg'
+        const path = `${id}-${Date.now()}.${ext}`
+        const { error: uploadError } = await supabase.storage
+          .from('task-photos')
+          .upload(path, photo, { contentType: photo.type })
+
+        if (!uploadError) {
+          const { data: urlData } = supabase.storage.from('task-photos').getPublicUrl(path)
+          finalPhotoUrl = urlData.publicUrl
+        }
+      }
+
       const { data, error } = await supabase
         .from('task_completions')
         .update({
           status: 'completed',
           completed_at: new Date().toISOString(),
-          photo_url: photo_url || null,
+          photo_url: finalPhotoUrl,
           notes: notes || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', id)
+        .select()
+        .single()
+
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['task-completions'] })
+    },
+  })
+}
+
+export function useUncompleteTask() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from('task_completions')
+        .update({
+          status: 'pending',
+          completed_at: null,
           updated_at: new Date().toISOString(),
         })
         .eq('id', id)

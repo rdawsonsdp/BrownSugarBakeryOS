@@ -68,6 +68,7 @@
     "sops": "POEs",
     "profile": "Perfil",
     "progress": "{completed} de {total} tareas completadas",
+    "done": "Listo",
     "markComplete": "Marcar Completa",
     "takePhoto": "Tomar Foto",
     "photoRequired": "Foto requerida",

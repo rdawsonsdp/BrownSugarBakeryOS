@@ -3,17 +3,20 @@
 import { useState, useCallback, useMemo } from 'react'
 import { useTranslations } from 'next-intl'
 import { motion } from 'framer-motion'
-import { Printer } from 'lucide-react'
+import { Printer, ChevronDown } from 'lucide-react'
 import { TaskCard } from './task-card'
-import { useTaskCompletions, useCompleteTask } from '@/lib/hooks/use-tasks'
+import { useTaskCompletions, useCompleteTask, useUncompleteTask } from '@/lib/hooks/use-tasks'
 import { useSOPs } from '@/lib/hooks/use-sops'
+import { useCategories } from '@/lib/hooks/use-categories'
 import { useRealtimeTaskCompletions } from '@/lib/hooks/use-realtime'
 import { useAuthStore } from '@/lib/stores/auth-store'
 import { useLocaleStore } from '@/lib/stores/locale-store'
 import { Skeleton } from '@/components/ui/skeleton'
+import { UndoToast } from '@/components/ui/toast'
 import { PrintSelectDialog, PrintTaskSheet } from '@/components/dashboard/manager/print-tasks'
+import { cn } from '@/lib/utils/cn'
 import type { PrintSize } from '@/components/dashboard/manager/print-tasks'
-import type { SOPWithSteps } from '@/lib/types/database.types'
+import type { SOPWithSteps, TaskCompletionWithTemplate } from '@/lib/types/database.types'
 
 interface TaskListProps {
   shiftId: string
@@ -25,11 +28,16 @@ export function TaskList({ shiftId, zoneId }: TaskListProps) {
   const staff = useAuthStore((s) => s.staff)
   const zone = useAuthStore((s) => s.zone)
   const { locale } = useLocaleStore()
-  // Default: all tasks expanded
-  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set())
+  // Default: all tasks collapsed
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
   const { data: completions, isLoading } = useTaskCompletions(shiftId)
   const { data: sops } = useSOPs(zoneId)
+  const { data: categories = [] } = useCategories()
   const completeTask = useCompleteTask()
+  const uncompleteTask = useUncompleteTask()
+
+  // Undo toast state
+  const [undoToast, setUndoToast] = useState<{ id: string; name: string } | null>(null)
 
   // Print state
   const [printDialogOpen, setPrintDialogOpen] = useState(false)
@@ -44,16 +52,29 @@ export function TaskList({ shiftId, zoneId }: TaskListProps) {
     return acc
   }, {})
 
-  const handleComplete = useCallback((id: string) => {
-    completeTask.mutate({ id })
-  }, [completeTask])
+  const handleComplete = useCallback((id: string, photo?: File) => {
+    const task = completions?.find((c) => c.id === id)
+    const taskName = task ? (locale === 'es' ? task.task_template.name_es : task.task_template.name_en) : ''
+    completeTask.mutate({ id, photo }, {
+      onSuccess: () => {
+        setUndoToast({ id, name: taskName })
+      },
+    })
+  }, [completeTask, completions, locale])
+
+  const handleUndo = useCallback(() => {
+    if (undoToast) {
+      uncompleteTask.mutate(undoToast.id)
+      setUndoToast(null)
+    }
+  }, [undoToast, uncompleteTask])
 
   const handlePhoto = useCallback((id: string) => {
     completeTask.mutate({ id, notes: 'Photo captured' })
   }, [completeTask])
 
   const handleToggle = useCallback((id: string) => {
-    setCollapsedIds((prev) => {
+    setExpandedIds((prev) => {
       const next = new Set(prev)
       if (next.has(id)) {
         next.delete(id)
@@ -143,26 +164,88 @@ export function TaskList({ shiftId, zoneId }: TaskListProps) {
         </div>
       </div>
 
-      {/* Task cards — all expanded by default */}
-      <div className="space-y-2">
-        {completions?.map((completion) => (
-          <TaskCard
-            key={completion.id}
-            completion={completion}
-            isExpanded={!collapsedIds.has(completion.id)}
-            onToggle={() => handleToggle(completion.id)}
-            onComplete={handleComplete}
-            onPhoto={handlePhoto}
-            sop={completion.task_template.sop_id ? sopMap[completion.task_template.sop_id] : null}
-          />
-        ))}
-      </div>
+      {/* Task cards grouped by category — collapsed by default */}
+      {(() => {
+        if (!completions || completions.length === 0) {
+          return (
+            <div className="text-center py-12 text-brown/40">
+              <p className="text-lg font-semibold">No tasks for this shift</p>
+            </div>
+          )
+        }
 
-      {total === 0 && (
-        <div className="text-center py-12 text-brown/40">
-          <p className="text-lg font-semibold">No tasks for this shift</p>
-        </div>
-      )}
+        // Group tasks by SOP category
+        const categoryMap = categories.reduce<Record<string, string>>((acc, cat) => {
+          acc[cat.slug] = locale === 'es' ? cat.name_es : cat.name_en
+          return acc
+        }, {})
+
+        const groups: { key: string; label: string; tasks: TaskCompletionWithTemplate[] }[] = []
+        const grouped = new Map<string, TaskCompletionWithTemplate[]>()
+
+        for (const c of completions) {
+          const sop = c.task_template.sop_id ? sopMap[c.task_template.sop_id] : null
+          const catKey = sop?.category || '_other'
+          if (!grouped.has(catKey)) grouped.set(catKey, [])
+          grouped.get(catKey)!.push(c)
+        }
+
+        for (const [key, tasks] of grouped) {
+          groups.push({
+            key,
+            label: key === '_other' ? (locale === 'es' ? 'Otras' : 'Other') : (categoryMap[key] || key),
+            tasks,
+          })
+        }
+
+        // Single group: skip the header
+        if (groups.length <= 1) {
+          return (
+            <div className="space-y-2">
+              {completions.map((completion) => (
+                <TaskCard
+                  key={completion.id}
+                  completion={completion}
+                  isExpanded={expandedIds.has(completion.id)}
+                  onToggle={() => handleToggle(completion.id)}
+                  onComplete={handleComplete}
+                  onPhoto={handlePhoto}
+                  sop={completion.task_template.sop_id ? sopMap[completion.task_template.sop_id] : null}
+                />
+              ))}
+            </div>
+          )
+        }
+
+        return (
+          <div className="space-y-4">
+            {groups.map((group) => {
+              const groupDone = group.tasks.filter((t) => t.status === 'completed').length
+              return (
+                <div key={group.key}>
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-xs font-semibold text-brown/50 uppercase tracking-wider">{group.label}</h3>
+                    <span className="text-xs text-brown/40">{groupDone}/{group.tasks.length}</span>
+                  </div>
+                  <div className="space-y-2">
+                    {group.tasks.map((completion) => (
+                      <TaskCard
+                        key={completion.id}
+                        completion={completion}
+                        isExpanded={expandedIds.has(completion.id)}
+                        onToggle={() => handleToggle(completion.id)}
+                        onComplete={handleComplete}
+                        onPhoto={handlePhoto}
+                        sop={completion.task_template.sop_id ? sopMap[completion.task_template.sop_id] : null}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )
+      })()}
 
       {/* Print dialog */}
       <PrintSelectDialog
@@ -182,6 +265,14 @@ export function TaskList({ shiftId, zoneId }: TaskListProps) {
           pageSize={printSize}
         />
       )}
+
+      {/* Undo toast */}
+      <UndoToast
+        visible={!!undoToast}
+        message={undoToast ? `"${undoToast.name}" completed` : ''}
+        onUndo={handleUndo}
+        onDismiss={() => setUndoToast(null)}
+      />
     </div>
   )
 }

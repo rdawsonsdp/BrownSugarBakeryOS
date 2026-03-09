@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Loader2, Shield, ClipboardList, Store, ChefHat, Flame, ArrowLeft } from 'lucide-react'
+import { Loader2, Shield, ClipboardList, Store, ChefHat, Flame, ArrowLeft, Clock } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { useZones } from '@/lib/hooks/use-zones'
@@ -36,6 +36,16 @@ interface RoleWithZone {
   } | null
 }
 
+function getLastLogin() {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = localStorage.getItem('bakeryos-last-login')
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
 export default function LoginRolePage() {
   const router = useRouter()
   const { locale } = useLocaleStore()
@@ -43,10 +53,10 @@ export default function LoginRolePage() {
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null)
   const [loading, setLoading] = useState<string | null>(null)
   const [navigating, setNavigating] = useState(false)
+  const lastLogin = useMemo(() => getLastLogin(), [])
 
   const { data: zones, isLoading: zonesLoading } = useZones()
 
-  // Fetch roles with their zone info
   const { data: roles, isLoading: rolesLoading } = useQuery({
     queryKey: ['all-roles-with-zones'],
     queryFn: async () => {
@@ -68,10 +78,45 @@ export default function LoginRolePage() {
     }
   }, [selectedStaff, navigating, router])
 
+  // Count roles per zone and auto-select if only one zone has roles
+  const zonesWithRoles = useMemo(() => {
+    if (!zones || !roles) return null
+    return zones.filter((z) => roles.some((r) => r.zone_id === z.id))
+  }, [zones, roles])
+
+  const roleCountByZone = useMemo(() => {
+    if (!roles) return new Map<string, number>()
+    const map = new Map<string, number>()
+    for (const r of roles) {
+      if (r.zone_id) map.set(r.zone_id, (map.get(r.zone_id) ?? 0) + 1)
+    }
+    return map
+  }, [roles])
+
+  useEffect(() => {
+    if (!zonesWithRoles || selectedZoneId || navigating) return
+    if (zonesWithRoles.length === 1) {
+      setSelectedZoneId(zonesWithRoles[0].id)
+    }
+  }, [zonesWithRoles, selectedZoneId, navigating])
+
+  // Auto-select: if only one role in selected zone, auto-pick it
+  const zoneRoles = useMemo(
+    () => roles?.filter((r) => r.zone_id === selectedZoneId) ?? [],
+    [roles, selectedZoneId]
+  )
+
+  useEffect(() => {
+    if (!selectedZoneId || navigating || loading) return
+    if (zoneRoles.length === 1) {
+      handleRoleSelect(zoneRoles[0])
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedZoneId, zoneRoles.length])
+
   if (!navigating && !selectedStaff) return null
 
   const selectedZone = zones?.find((z) => z.id === selectedZoneId)
-  const zoneRoles = roles?.filter((r) => r.zone_id === selectedZoneId) ?? []
 
   const handleRoleSelect = async (role: RoleWithZone) => {
     if (!selectedStaff || !role.zone) return
@@ -92,9 +137,31 @@ export default function LoginRolePage() {
       if (!res.ok) throw new Error('Failed to start shift')
       const data = await res.json()
 
+      const roleName = locale === 'es' ? data.role.name_es : data.role.name_en
       const dashPath = data.role.is_manager
         ? `/zone/${role.zone.slug}/manager`
         : `/zone/${role.zone.slug}/staff`
+
+      // Save last login for Quick Start
+      try {
+        localStorage.setItem('bakeryos-last-login', JSON.stringify({
+          staffName: selectedStaff.display_name,
+          staffId: selectedStaff.id,
+          zoneSlug: role.zone.slug,
+          zoneId: role.zone.id,
+          roleId: role.id,
+          roleName,
+        }))
+      } catch { /* localStorage may be unavailable */ }
+
+      // Store previous shift notes for handoff display
+      try {
+        if (data.previousShiftNotes) {
+          sessionStorage.setItem('bakeryos-prev-notes', data.previousShiftNotes)
+        } else {
+          sessionStorage.removeItem('bakeryos-prev-notes')
+        }
+      } catch { /* sessionStorage may be unavailable */ }
 
       login({
         staff: data.staff,
@@ -126,7 +193,7 @@ export default function LoginRolePage() {
         <div className="flex items-center justify-between mb-2">
           <button
             onClick={() => {
-              if (selectedZoneId) {
+              if (selectedZoneId && (zonesWithRoles?.length ?? 0) > 1) {
                 setSelectedZoneId(null)
               } else {
                 router.back()
@@ -154,7 +221,7 @@ export default function LoginRolePage() {
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.2 }}
+              transition={{ duration: 0.15 }}
             >
               <div className="mb-6">
                 <h1 className="text-2xl font-bold text-brown">
@@ -176,35 +243,71 @@ export default function LoginRolePage() {
                   {zones?.map((zone, i) => {
                     const zoneName = locale === 'es' ? zone.name_es : zone.name_en
                     const Icon = iconMap[zone.icon] || Store
-                    const roleCount = roles?.filter((r) => r.zone_id === zone.id).length ?? 0
+                    const roleCount = roleCountByZone.get(zone.id) ?? 0
+                    const isLastUsed = lastLogin?.zoneId === zone.id
+                    const hasRoles = roleCount > 0
 
                     return (
-                      <motion.button
+                      <motion.div
                         key={zone.id}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.08 }}
-                        onClick={() => setSelectedZoneId(zone.id)}
-                        className={cn(
-                          'w-full flex items-center gap-4 p-5 rounded-2xl border-2 text-left transition-all',
-                          'bg-white hover:shadow-md active:scale-[0.98]',
-                          'border-brown/10 hover:border-brown/30',
-                          roleCount === 0 && 'opacity-40 pointer-events-none'
-                        )}
+                        transition={{ delay: i * 0.06 }}
                       >
-                        <div
-                          className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
-                          style={{ backgroundColor: zone.color }}
+                        <button
+                          onClick={() => hasRoles ? setSelectedZoneId(zone.id) : null}
+                          disabled={!hasRoles}
+                          className={cn(
+                            'w-full flex items-center gap-4 p-5 rounded-2xl border-2 text-left transition-all',
+                            hasRoles
+                              ? cn(
+                                  'bg-white hover:shadow-md active:scale-[0.98]',
+                                  isLastUsed
+                                    ? 'border-gold/30 hover:border-gold/50'
+                                    : 'border-brown/10 hover:border-brown/30'
+                                )
+                              : 'bg-brown/[0.02] border-dashed border-brown/10 cursor-default'
+                          )}
                         >
-                          <Icon className="w-6 h-6 text-white" />
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="font-bold text-brown text-base">{zoneName}</h3>
-                          <p className="text-xs text-brown/50 mt-0.5">
-                            {roleCount} {roleCount === 1 ? 'role' : 'roles'}
-                          </p>
-                        </div>
-                      </motion.button>
+                          <div
+                            className={cn(
+                              'w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0',
+                              !hasRoles && 'opacity-40'
+                            )}
+                            style={{ backgroundColor: zone.color }}
+                          >
+                            <Icon className="w-6 h-6 text-white" />
+                          </div>
+                          <div className="flex-1">
+                            <h3 className={cn('font-bold text-base', hasRoles ? 'text-brown' : 'text-brown/40')}>
+                              {zoneName}
+                            </h3>
+                            {hasRoles ? (
+                              <p className="text-xs text-brown/50 mt-0.5">
+                                {roleCount} {roleCount === 1 ? (locale === 'es' ? 'rol' : 'role') : (locale === 'es' ? 'roles' : 'roles')}
+                              </p>
+                            ) : (
+                              <p className="text-xs text-brown/40 mt-0.5">
+                                {locale === 'es' ? 'No hay roles — necesita configuración' : 'No roles — needs setup'}
+                              </p>
+                            )}
+                          </div>
+                          {isLastUsed && hasRoles && (
+                            <span className="flex items-center gap-1 text-[10px] font-semibold text-gold bg-gold/10 px-2 py-1 rounded-full">
+                              <Clock className="w-3 h-3" />
+                              {locale === 'es' ? 'Último' : 'Last'}
+                            </span>
+                          )}
+                        </button>
+                        {!hasRoles && (
+                          <button
+                            onClick={() => router.push('/admin/roles')}
+                            className="mt-1.5 ml-16 text-[11px] font-semibold text-gold hover:text-gold/80 transition-colors"
+                          >
+                            {locale === 'es' ? '→ Configurar roles' : '→ Set up roles'}
+                          </button>
+                        )}
+                      </motion.div>
                     )
                   })}
                 </div>
@@ -217,7 +320,7 @@ export default function LoginRolePage() {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
-              transition={{ duration: 0.2 }}
+              transition={{ duration: 0.15 }}
             >
               <div className="mb-6">
                 <h1 className="text-2xl font-bold text-brown">
@@ -234,13 +337,14 @@ export default function LoginRolePage() {
                     const roleName = locale === 'es' ? role.name_es : role.name_en
                     const Icon = role.is_manager ? Shield : ClipboardList
                     const isThisLoading = loading === role.id
+                    const isLastUsed = lastLogin?.roleId === role.id
 
                     return (
                       <motion.button
                         key={role.id}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.05 }}
+                        transition={{ delay: i * 0.04 }}
                         onClick={() => handleRoleSelect(role)}
                         disabled={!!loading}
                         className={cn(
@@ -248,6 +352,8 @@ export default function LoginRolePage() {
                           'bg-white hover:shadow-md active:scale-[0.98]',
                           role.is_manager
                             ? 'border-gold/20 hover:border-gold/50'
+                            : isLastUsed
+                            ? 'border-gold/20 hover:border-gold/40'
                             : 'border-brown/10 hover:border-brown/30',
                           loading && !isThisLoading && 'opacity-40'
                         )}
@@ -267,6 +373,11 @@ export default function LoginRolePage() {
                         <div className="flex-1">
                           <h3 className="font-bold text-brown text-sm">{roleName}</h3>
                         </div>
+                        {isLastUsed && (
+                          <span className="text-[10px] font-semibold text-gold bg-gold/10 px-2 py-1 rounded-full">
+                            {locale === 'es' ? 'Último' : 'Last'}
+                          </span>
+                        )}
                       </motion.button>
                     )
                   })}

@@ -8,13 +8,14 @@ import { useLocaleStore } from '@/lib/stores/locale-store'
 import { useStaffAuth } from '@/lib/hooks/use-staff-auth'
 import { useRealtimeAll } from '@/lib/hooks/use-realtime'
 import { ZoneHeader } from '@/components/layout/zone-header'
+import { NotificationBell } from '@/components/layout/notification-bell'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { OverviewTab } from '@/components/dashboard/manager/overview-tab'
 import { TeamTab } from '@/components/dashboard/manager/team-tab'
-import { TasksTab } from '@/components/dashboard/manager/tasks-tab'
 import { SOPLibrary } from '@/components/sop/sop-library'
-import { Button } from '@/components/ui/button'
-import { LogOut, Settings } from 'lucide-react'
+import { SettingsTab } from '@/components/dashboard/manager/settings-tab'
+import { LogOut } from 'lucide-react'
+import { OfflineBanner } from '@/components/layout/offline-banner'
 
 export default function ManagerDashboardPage() {
   const router = useRouter()
@@ -22,7 +23,7 @@ export default function ManagerDashboardPage() {
   const td = useTranslations('dashboard')
   const { locale } = useLocaleStore()
   const { staff, zone, role, shift, isAuthenticated, logout } = useStaffAuth()
-  const [activeTab, setActiveTab] = useState('overview')
+  const [activeTab, setActiveTab] = useState('dashboard')
 
   // Subscribe to realtime updates
   useRealtimeAll()
@@ -59,19 +60,33 @@ export default function ManagerDashboardPage() {
         streak={staff.streak_count}
         shiftType={td(`shift.${shift.shift_type}` as 'shift.opening')}
         isManager
+        compact
+        rightSlot={
+          <>
+            <NotificationBell />
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 transition-colors text-white text-xs font-semibold"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              Sign Out
+            </button>
+          </>
+        }
       />
+      <OfflineBanner />
 
       <div className="max-w-lg mx-auto">
         <div className="px-4 pt-4">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList>
-              <TabsTrigger value="overview">{t('overview')}</TabsTrigger>
+              <TabsTrigger value="dashboard">{locale === 'es' ? 'Panel' : 'Dashboard'}</TabsTrigger>
               <TabsTrigger value="team">{t('myTeam')}</TabsTrigger>
-              <TabsTrigger value="tasks">{t('currentTasks')}</TabsTrigger>
               <TabsTrigger value="library">{t('library')}</TabsTrigger>
+              <TabsTrigger value="settings">{locale === 'es' ? 'Ajustes' : 'Settings'}</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="overview">
+            <TabsContent value="dashboard">
               <OverviewTab zoneId={zone.id} />
             </TabsContent>
 
@@ -79,23 +94,14 @@ export default function ManagerDashboardPage() {
               <TeamTab />
             </TabsContent>
 
-            <TabsContent value="tasks">
-              <TasksTab />
-            </TabsContent>
-
             <TabsContent value="library">
               <SOPLibrary />
             </TabsContent>
-          </Tabs>
-        </div>
 
-        <div className="px-4 mt-6 space-y-2">
-          <Button variant="ghost" onClick={() => router.push('/admin/roles')} className="w-full text-brown/40">
-            <Settings className="w-4 h-4" /> Roles & Zones
-          </Button>
-          <Button variant="ghost" onClick={handleLogout} className="w-full text-brown/40">
-            <LogOut className="w-4 h-4" /> Sign Out
-          </Button>
+            <TabsContent value="settings">
+              <SettingsTab onLogout={handleLogout} />
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </motion.div>

@@ -9,7 +9,9 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils/cn'
-import { Plus, Edit2, Trash2, ArrowLeft, Shield, ClipboardList, MapPin } from 'lucide-react'
+import { Plus, Edit2, Trash2, ArrowLeft, Shield, ClipboardList, MapPin, ChevronDown } from 'lucide-react'
+import { useRoleSopAssignments, useAddRoleSopAssignment, useRemoveRoleSopAssignment } from '@/lib/hooks/use-role-sop-assignments'
+import { useSOPs } from '@/lib/hooks/use-sops'
 
 interface RoleFormData {
   id?: string
@@ -407,43 +409,130 @@ function RoleCard({
   onDelete: () => void
   unassigned?: boolean
 }) {
+  const [showTasks, setShowTasks] = useState(false)
   const roleName = locale === 'es' ? role.name_es : role.name_en
   const Icon = role.is_manager ? Shield : ClipboardList
 
   return (
     <div
       className={cn(
-        'flex items-center gap-3 p-3 rounded-xl border bg-white transition-colors',
+        'rounded-xl border bg-white transition-colors overflow-hidden',
         unassigned ? 'border-dashed border-brown/10' : 'border-brown/10'
       )}
     >
-      <div
-        className={cn(
-          'w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0',
-          role.is_manager ? 'bg-gold/10' : 'bg-brown/5'
+      <div className="flex items-center gap-3 p-3">
+        <div
+          className={cn(
+            'w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0',
+            role.is_manager ? 'bg-gold/10' : 'bg-brown/5'
+          )}
+        >
+          <Icon className={cn('w-4 h-4', role.is_manager ? 'text-gold' : 'text-brown/40')} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <span className="text-sm font-bold text-brown block">{roleName}</span>
+          <span className="text-[10px] text-brown/40">
+            {role.is_manager ? 'Manager' : 'Staff'}
+            {role.sort_order != null && ` · #${role.sort_order}`}
+          </span>
+        </div>
+        {role.zone_id && (
+          <button
+            onClick={() => setShowTasks(!showTasks)}
+            className={cn(
+              'px-2 py-1 rounded-lg text-[10px] font-semibold transition-colors flex items-center gap-1',
+              showTasks ? 'bg-brown/10 text-brown' : 'bg-brown/5 text-brown/40 hover:text-brown/60'
+            )}
+          >
+            Tasks
+            <ChevronDown className={cn('w-3 h-3 transition-transform', showTasks && 'rotate-180')} />
+          </button>
         )}
-      >
-        <Icon className={cn('w-4 h-4', role.is_manager ? 'text-gold' : 'text-brown/40')} />
+        <button
+          onClick={onEdit}
+          className="p-1.5 rounded-lg text-brown/20 hover:text-brown hover:bg-brown/5 transition-colors"
+        >
+          <Edit2 className="w-3.5 h-3.5" />
+        </button>
+        <button
+          onClick={onDelete}
+          className="p-1.5 rounded-lg text-brown/20 hover:text-red hover:bg-red/5 transition-colors"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
       </div>
-      <div className="flex-1 min-w-0">
-        <span className="text-sm font-bold text-brown block">{roleName}</span>
-        <span className="text-[10px] text-brown/40">
-          {role.is_manager ? 'Manager' : 'Staff'}
-          {role.sort_order != null && ` · #${role.sort_order}`}
-        </span>
-      </div>
-      <button
-        onClick={onEdit}
-        className="p-1.5 rounded-lg text-brown/20 hover:text-brown hover:bg-brown/5 transition-colors"
-      >
-        <Edit2 className="w-3.5 h-3.5" />
-      </button>
-      <button
-        onClick={onDelete}
-        className="p-1.5 rounded-lg text-brown/20 hover:text-red hover:bg-red/5 transition-colors"
-      >
-        <Trash2 className="w-3.5 h-3.5" />
-      </button>
+
+      {showTasks && role.zone_id && (
+        <RoleTaskAssignment roleId={role.id} zoneId={role.zone_id} locale={locale} />
+      )}
+    </div>
+  )
+}
+
+function RoleTaskAssignment({ roleId, zoneId, locale }: { roleId: string; zoneId: string; locale: string }) {
+  const { data: sops, isLoading: sopsLoading } = useSOPs(zoneId)
+  const { data: assignments } = useRoleSopAssignments(roleId)
+  const addAssignment = useAddRoleSopAssignment()
+  const removeAssignment = useRemoveRoleSopAssignment()
+
+  const assignedIds = new Set(
+    (assignments ?? []).filter((a) => a.is_active).map((a) => a.sop_id)
+  )
+
+  const handleToggle = (sopId: string) => {
+    if (assignedIds.has(sopId)) {
+      removeAssignment.mutate({ role_id: roleId, sop_id: sopId })
+    } else {
+      addAssignment.mutate({ role_id: roleId, sop_id: sopId })
+    }
+  }
+
+  if (sopsLoading) {
+    return <div className="px-3 pb-3"><Skeleton className="h-12 w-full" /></div>
+  }
+
+  if (!sops || sops.length === 0) {
+    return (
+      <p className="px-3 pb-3 text-xs text-brown/30">No SOPs in this zone</p>
+    )
+  }
+
+  return (
+    <div className="px-3 pb-3 border-t border-brown/5 pt-2 space-y-1">
+      <p className="text-[10px] font-semibold text-brown/40 uppercase tracking-wider mb-1.5">
+        Assigned SOPs
+      </p>
+      {sops.map((sop) => {
+        const isOn = assignedIds.has(sop.id)
+        const name = locale === 'es' ? sop.name_es : sop.name_en
+        return (
+          <button
+            key={sop.id}
+            onClick={() => handleToggle(sop.id)}
+            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-brown/5 transition-colors text-left"
+          >
+            <div
+              className={cn(
+                'w-8 h-4 rounded-full relative transition-colors flex-shrink-0',
+                isOn ? 'bg-success' : 'bg-brown/15'
+              )}
+            >
+              <div
+                className={cn(
+                  'absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-transform',
+                  isOn ? 'translate-x-4' : 'translate-x-0.5'
+                )}
+              />
+            </div>
+            <span className={cn('text-xs', isOn ? 'font-medium text-brown' : 'text-brown/40')}>
+              {name}
+            </span>
+            {sop.is_critical && (
+              <span className="text-[9px] font-bold text-red uppercase ml-auto">Critical</span>
+            )}
+          </button>
+        )
+      })}
     </div>
   )
 }

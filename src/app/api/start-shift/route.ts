@@ -173,7 +173,38 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 3. Log the session for audit
+    // 3. Get previous shift notes for handoff
+    let previousShiftNotes: string | null = null
+    const { data: prevShift } = await supabase
+      .from('shifts')
+      .select('notes')
+      .eq('zone_id', zone_id)
+      .lt('shift_date', today)
+      .not('notes', 'is', null)
+      .order('shift_date', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (!prevShift) {
+      // Also check earlier shifts on the same day
+      const { data: earlierShift } = await supabase
+        .from('shifts')
+        .select('notes')
+        .eq('zone_id', zone_id)
+        .eq('shift_date', today)
+        .neq('id', shift.id)
+        .not('notes', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      previousShiftNotes = earlierShift?.notes || null
+    } else {
+      previousShiftNotes = prevShift.notes || null
+    }
+
+    // 4. Log the session for audit
     await supabase.from('login_sessions').insert({
       staff_id,
       zone_id,
@@ -181,7 +212,7 @@ export async function POST(request: NextRequest) {
       shift_id: shift.id,
     })
 
-    // 4. Update streak
+    // 5. Update streak
     const { data: staffRecord } = await supabase
       .from('staff')
       .select('streak_count, last_login_date')
@@ -204,7 +235,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 5. Get full zone and role data for the client
+    // 6. Get full zone and role data for the client
     const [{ data: zone }, { data: role }, { data: staff }] = await Promise.all([
       supabase.from('zones').select('*').eq('id', zone_id).single(),
       supabase.from('roles').select('*').eq('id', role_id).single(),
@@ -218,6 +249,7 @@ export async function POST(request: NextRequest) {
       zone,
       role,
       shift,
+      previousShiftNotes,
     })
   } catch (error) {
     console.error('Start shift error:', error)

@@ -68,6 +68,7 @@
     "sops": "SOPs",
     "profile": "Profile",
     "progress": "{completed} of {total} tasks done",
+    "done": "Done",
     "markComplete": "Mark Complete",
     "takePhoto": "Take Photo",
     "photoRequired": "Photo required",

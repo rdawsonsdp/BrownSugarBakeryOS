@@ -11,10 +11,20 @@ export function SplashScreen() {
   const [isVisible, setIsVisible] = useState(true)
 
   useEffect(() => {
+    const hasVisited = typeof window !== 'undefined' && localStorage.getItem('bakeryos-has-visited')
+
+    if (hasVisited) {
+      // Return visitor — skip splash entirely
+      router.replace('/login')
+      return
+    }
+
+    // First visit — show splash briefly, then mark as visited
+    localStorage.setItem('bakeryos-has-visited', '1')
     const timer = setTimeout(() => {
       setIsVisible(false)
-      setTimeout(() => router.push('/login'), 400)
-    }, 3200)
+      setTimeout(() => router.push('/login'), 300)
+    }, 1500)
     return () => clearTimeout(timer)
   }, [router])
 
@@ -35,7 +45,7 @@ export function SplashScreen() {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 1.5, duration: 0.8 }}
+              transition={{ delay: 0.3, duration: 0.5 }}
               className="text-center"
             >
               <h1
@@ -47,7 +57,7 @@ export function SplashScreen() {
               <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 0.7 }}
-                transition={{ delay: 2.0, duration: 0.6 }}
+                transition={{ delay: 0.6, duration: 0.4 }}
                 className="text-cream/60 text-sm mt-3 tracking-[0.25em] uppercase"
               >
                 Life Is Sweet
