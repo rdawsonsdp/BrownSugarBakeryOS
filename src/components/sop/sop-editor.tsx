@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
-import { Plus, GripVertical, Trash2, Camera, AlertTriangle, Type, Mic, ImageIcon, Sparkles, ChevronDown, Check } from 'lucide-react'
+import { Plus, GripVertical, Trash2, Camera, AlertTriangle, Type, Mic, ImageIcon, ChevronDown, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
@@ -10,12 +10,10 @@ import { Dialog, DialogHeader, DialogTitle, DialogContent } from '@/components/u
 import { cn } from '@/lib/utils/cn'
 import { VoiceInput } from './voice-input'
 import { PhotoInput } from './photo-input'
-import { AIChat } from './ai-chat'
 import { useAuthStore } from '@/lib/stores/auth-store'
 import { useLocaleStore } from '@/lib/stores/locale-store'
 import { useCategories, useCreateCategory } from '@/lib/hooks/use-categories'
 import type { SOPWithSteps } from '@/lib/types/database.types'
-import type { AIGeneratedSOP } from '@/lib/types/ai-chat.types'
 
 interface SOPEditorProps {
   sop?: SOPWithSteps
@@ -34,7 +32,7 @@ interface StepDraft {
   estimated_minutes: number | null
 }
 
-type InputMode = 'text' | 'voice' | 'photo' | 'ai'
+type InputMode = 'text' | 'voice' | 'photo'
 
 export function SOPEditor({ sop, zoneId, onSave, onCancel }: SOPEditorProps) {
   const t = useTranslations('sop.editor')
@@ -66,25 +64,6 @@ export function SOPEditor({ sop, zoneId, onSave, onCancel }: SOPEditorProps) {
   const { locale } = useLocaleStore()
   const { data: categories = [] } = useCategories()
   const createCategory = useCreateCategory()
-
-  const handleAIGenerated = useCallback((aiSop: AIGeneratedSOP) => {
-    setNameEn(aiSop.name_en)
-    setNameEs(aiSop.name_es)
-    setDescEn(aiSop.description_en)
-    setDescEs(aiSop.description_es)
-    setCategory(aiSop.category)
-    setIsCritical(aiSop.is_critical)
-    setDaysOfWeek(aiSop.days_of_week)
-    setSteps(aiSop.steps.map((s) => ({
-      title_en: s.title_en,
-      title_es: s.title_es,
-      description_en: s.description_en,
-      description_es: s.description_es,
-      requires_photo: s.requires_photo,
-      estimated_minutes: s.estimated_minutes,
-    })))
-    setInputMode('text')
-  }, [])
 
   const addStep = () => {
     setSteps([...steps, {
@@ -255,20 +234,10 @@ export function SOPEditor({ sop, zoneId, onSave, onCancel }: SOPEditorProps) {
           <ImageIcon className="w-4 h-4" />
           {t('modePhoto')}
         </button>
-        <button
-          disabled
-          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-bold transition-colors text-brown/20 cursor-not-allowed"
-          title="AI mode is temporarily disabled"
-        >
-          <Sparkles className="w-4 h-4" />
-          {t('modeAI')}
-        </button>
       </div>
 
-      {/* AI Chat mode — temporarily disabled */}
-
-      {/* Standard form fields — hidden when AI mode is active */}
-      {inputMode !== 'ai' && (<>
+      {/* Standard form fields */}
+      <>
 
       {/* Bilingual name fields */}
       <div className="grid grid-cols-2 gap-3">
@@ -531,7 +500,7 @@ export function SOPEditor({ sop, zoneId, onSave, onCancel }: SOPEditorProps) {
         </Button>
       </div>
 
-      </>)}
+      </>
 
       {/* Action buttons */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-brown/10 px-4 pt-4 pb-16 flex gap-3">
