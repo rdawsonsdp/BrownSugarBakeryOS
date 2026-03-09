@@ -27,7 +27,7 @@ export function TasksTab() {
   const zone = useAuthStore((s) => s.zone)
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
-  const [selectedZone, setSelectedZone] = useState<string>('')
+  const [selectedZone, setSelectedZone] = useState<string>(zone?.id || '')
   const { data: sops, isLoading } = useSOPs(selectedZone || undefined)
   const { data: zones } = useZones()
 

@@ -10,16 +10,22 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { useState } from 'react'
+import { CheckCircle2, Circle } from 'lucide-react'
+import { cn } from '@/lib/utils/cn'
 
-export function OverviewTab() {
+interface OverviewTabProps {
+  zoneId?: string
+}
+
+export function OverviewTab({ zoneId }: OverviewTabProps) {
   const t = useTranslations('manager')
   const { data: zones, isLoading: zonesLoading } = useZones()
   const { data: activeShifts } = useActiveShifts()
   const [dismissedAlerts, setDismissedAlerts] = useState<string[]>([])
 
-  // Fetch today's task completions for all zones
+  // Fetch today's task completions for the current zone
   const { data: allCompletions } = useQuery({
-    queryKey: ['all-completions-today'],
+    queryKey: ['all-completions-today', zoneId],
     queryFn: async () => {
       const supabase = createClient()
       const today = new Date().toISOString().split('T')[0]
@@ -44,8 +50,12 @@ export function OverviewTab() {
     )
   }
 
+  // Filter to current zone only
+  const currentZone = zones?.find((z) => z.id === zoneId)
+  const filteredZones = currentZone ? [currentZone] : zones || []
+
   // Calculate per-zone stats
-  const zoneStats = zones?.map((zone) => {
+  const zoneStats = filteredZones.map((zone) => {
     const zoneCompletions = allCompletions?.filter(
       (c) => c.task_template?.zone_id === zone.id
     ) || []
@@ -54,22 +64,34 @@ export function OverviewTab() {
     const percent = total === 0 ? 0 : Math.round((completed / total) * 100)
     const staffCount = activeShifts?.filter((s) => s.zone_id === zone.id).length || 0
 
-    return { zone, total, completed, percent, staffCount }
-  }) || []
+    return { zone, total, completed, percent, staffCount, completions: zoneCompletions }
+  })
 
-  // Find overdue critical tasks
+  // Get zone-specific completions for task list
+  const zoneCompletions = allCompletions?.filter(
+    (c) => c.task_template?.zone_id === zoneId
+  ) || []
+
+  // Sort: incomplete first, then completed
+  const sortedTasks = [...zoneCompletions].sort((a, b) => {
+    if (a.status === 'completed' && b.status !== 'completed') return 1
+    if (a.status !== 'completed' && b.status === 'completed') return -1
+    return 0
+  })
+
+  // Find overdue critical tasks for this zone only
   const overdueAlerts = allCompletions?.filter((c) => {
     if (c.status === 'completed') return false
     if (!c.task_template?.is_critical) return false
     if (dismissedAlerts.includes(c.id)) return false
-    // Consider overdue if created more than 30 min ago
+    if (zoneId && c.task_template?.zone_id !== zoneId) return false
     const created = new Date(c.created_at)
     return Date.now() - created.getTime() > 30 * 60 * 1000
   }) || []
 
   return (
     <div className="space-y-6 p-4">
-      {/* Zone Health Cards */}
+      {/* Zone Health Card */}
       <div>
         <h2 className="text-sm font-semibold text-brown/60 uppercase tracking-wider mb-3">
           {t('zoneHealth')}
@@ -89,6 +111,50 @@ export function OverviewTab() {
           ))}
         </div>
       </div>
+
+      {/* Task List */}
+      {sortedTasks.length > 0 && (
+        <div>
+          <h2 className="text-sm font-semibold text-brown/60 uppercase tracking-wider mb-3">
+            {t('currentTasks')}
+          </h2>
+          <div className="space-y-2">
+            {sortedTasks.map((task) => {
+              const isCompleted = task.status === 'completed'
+              return (
+                <div
+                  key={task.id}
+                  className={cn(
+                    'flex items-center gap-3 p-3 rounded-xl border transition-colors',
+                    isCompleted
+                      ? 'bg-brown/5 border-brown/5'
+                      : 'bg-white border-brown/10'
+                  )}
+                >
+                  {isCompleted ? (
+                    <CheckCircle2 className="w-5 h-5 text-success flex-shrink-0" />
+                  ) : (
+                    <Circle className="w-5 h-5 text-brown/20 flex-shrink-0" />
+                  )}
+                  <span
+                    className={cn(
+                      'text-sm flex-1',
+                      isCompleted
+                        ? 'line-through text-brown/30'
+                        : 'text-brown font-medium'
+                    )}
+                  >
+                    {task.task_template?.name_en || 'Unknown Task'}
+                  </span>
+                  {task.task_template?.is_critical && !isCompleted && (
+                    <span className="text-[10px] font-bold text-red uppercase">Critical</span>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Alerts */}
       <div>

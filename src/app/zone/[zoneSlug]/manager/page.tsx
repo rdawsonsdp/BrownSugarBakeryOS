@@ -70,7 +70,7 @@ export default function ManagerDashboardPage() {
             </TabsList>
 
             <TabsContent value="overview">
-              <OverviewTab />
+              <OverviewTab zoneId={zone.id} />
             </TabsContent>
 
             <TabsContent value="team">
