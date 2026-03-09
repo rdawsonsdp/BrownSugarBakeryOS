@@ -13,6 +13,34 @@ import { Plus, Edit2, Trash2, ArrowLeft, Shield, ClipboardList, MapPin, ChevronD
 import { useRoleSopAssignments, useAddRoleSopAssignment, useRemoveRoleSopAssignment } from '@/lib/hooks/use-role-sop-assignments'
 import { useSOPs } from '@/lib/hooks/use-sops'
 
+// Common bakery/restaurant role terms EN → ES
+const translations: Record<string, string> = {
+  'manager': 'Gerente', 'shift manager': 'Gerente de Turno', 'general manager': 'Gerente General',
+  'assistant manager': 'Subgerente', 'cashier': 'Cajero', 'barista': 'Barista',
+  'baker': 'Panadero', 'head baker': 'Panadero Principal', 'pastry chef': 'Chef Pastelero',
+  'cook': 'Cocinero', 'line cook': 'Cocinero de Línea', 'prep cook': 'Cocinero de Preparación',
+  'prep': 'Preparación', 'server': 'Mesero', 'host': 'Anfitrión',
+  'busser': 'Ayudante de Mesero', 'dishwasher': 'Lavaplatos', 'kitchen': 'Cocina',
+  'front': 'Frente', 'back': 'Trasera', 'staff': 'Personal', 'lead': 'Líder',
+  'supervisor': 'Supervisor', 'team lead': 'Líder de Equipo', 'trainer': 'Entrenador',
+  'opener': 'Apertura', 'closer': 'Cierre', 'decorator': 'Decorador',
+  'drive thru': 'Auto Servicio', 'delivery': 'Entrega', 'runner': 'Corredor',
+  'expeditor': 'Expedidor', 'cleaner': 'Limpieza',
+}
+
+function autoTranslate(english: string): string {
+  const lower = english.toLowerCase().trim()
+  // Exact match
+  if (translations[lower]) return translations[lower]
+  // Try matching with number suffix (e.g. "Cashier 1" → "Cajero 1")
+  const match = lower.match(/^(.+?)\s*(\d+)$/)
+  if (match && translations[match[1].trim()]) {
+    return `${translations[match[1].trim()]} ${match[2]}`
+  }
+  // Fallback: return English value so the field isn't empty
+  return english
+}
+
 interface RoleFormData {
   id?: string
   name_en: string
@@ -266,11 +294,17 @@ export default function AdminRolesPage() {
                 <input
                   type="text"
                   value={form.name_en}
-                  onChange={(e) => setForm((f) => ({
-                    ...f,
-                    name_en: e.target.value,
-                    slug: f.id ? f.slug : autoSlug(e.target.value),
-                  }))}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    setForm((f) => ({
+                      ...f,
+                      name_en: val,
+                      slug: f.id ? f.slug : autoSlug(val),
+                      name_es: f.name_es === autoTranslate(f.name_en) || !f.name_es
+                        ? autoTranslate(val)
+                        : f.name_es,
+                    }))
+                  }}
                   className="w-full px-3 py-2 rounded-lg border border-brown/20 bg-white text-brown text-sm focus:border-brown focus:outline-none"
                   placeholder="e.g. Cashier 1"
                   required
@@ -281,6 +315,7 @@ export default function AdminRolesPage() {
               <div>
                 <label className="text-xs font-semibold text-brown/60 uppercase block mb-1">
                   Name (Spanish)
+                  <span className="text-brown/30 font-normal normal-case ml-1">— auto-translated</span>
                 </label>
                 <input
                   type="text"

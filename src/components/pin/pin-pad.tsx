@@ -72,7 +72,7 @@ export function PinPad({ onSubmit, zoneColor, isLoading = false }: PinPadProps) 
       {/* Keypad */}
       <div className="grid grid-cols-3 gap-4 w-full max-w-[300px]">
         {keys.map((key, i) => {
-          if (key === '') return <div key={i} />
+          if (key === '') return <div key="empty" />
           if (key === 'del') {
             return (
               <Button
