@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bakeryos-v1.0.0'
+const CACHE_NAME = 'bakeryos-v__CACHE_VERSION__'
 const APP_SHELL = [
   '/',
   '/manifest.json',

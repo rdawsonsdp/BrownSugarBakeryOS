@@ -3,6 +3,7 @@ import { Arsenal, Noto_Sans } from 'next/font/google'
 import { NextIntlClientProvider } from 'next-intl'
 import { getLocale, getMessages } from 'next-intl/server'
 import { Providers } from './providers'
+import { UpdateBanner } from '@/components/layout/update-banner'
 import './globals.css'
 
 const arsenal = Arsenal({
@@ -54,6 +55,7 @@ export default async function RootLayout({
       <body className={`${arsenal.variable} ${notoSans.variable} min-h-dvh bg-cream text-brown antialiased`}>
         <NextIntlClientProvider messages={messages}>
           <Providers>
+            <UpdateBanner />
             {children}
           </Providers>
         </NextIntlClientProvider>

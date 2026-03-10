@@ -2,6 +2,8 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
+import { track } from '@/lib/analytics/track'
+import { EVENTS } from '@/lib/analytics/events'
 import type { TaskCompletionWithTemplate } from '@/lib/types/database.types'
 
 export function useTaskCompletions(shiftId: string | undefined) {
@@ -68,7 +70,8 @@ export function useCompleteTask() {
       if (error) throw error
       return data
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
+      track(EVENTS.TASK_COMPLETE, { task_completion_id: variables.id, had_photo: !!variables.photo })
       queryClient.invalidateQueries({ queryKey: ['task-completions'] })
     },
   })
@@ -94,7 +97,8 @@ export function useUncompleteTask() {
       if (error) throw error
       return data
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
+      track(EVENTS.TASK_UNDO, { task_completion_id: variables })
       queryClient.invalidateQueries({ queryKey: ['task-completions'] })
     },
   })

@@ -11,6 +11,9 @@ import { useLocaleStore } from '@/lib/stores/locale-store'
 import { Skeleton } from '@/components/ui/skeleton'
 import { LanguageToggle } from '@/components/layout/language-toggle'
 import { Shield, ClipboardList, Search, Zap } from 'lucide-react'
+import { AppVersion } from '@/components/layout/app-version'
+import { track } from '@/lib/analytics/track'
+import { EVENTS } from '@/lib/analytics/events'
 
 interface LastLogin {
   staffName: string
@@ -98,6 +101,7 @@ export default function LoginPage() {
     if (!lastLogin) return
     const staff = staffList?.find((s) => s.id === lastLogin.staffId)
     if (staff) {
+      track(EVENTS.QUICK_START_USED, { staffId: lastLogin.staffId, roleName: lastLogin.roleName })
       selectByName(staff as Parameters<typeof selectByName>[0])
       router.push('/login/pin')
     }
@@ -271,6 +275,11 @@ export default function LoginPage() {
             </div>
           )}
         </motion.div>
+
+        {/* Version footer */}
+        <div className="text-center pt-8 pb-4">
+          <AppVersion showBuild />
+        </div>
       </div>
     </div>
   )

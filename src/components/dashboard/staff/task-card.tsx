@@ -9,6 +9,8 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { CameraCapture } from '@/components/ui/camera-capture'
 import { cn } from '@/lib/utils/cn'
+import { track } from '@/lib/analytics/track'
+import { EVENTS } from '@/lib/analytics/events'
 import type { TaskCompletionWithTemplate, SOPWithSteps } from '@/lib/types/database.types'
 
 interface TaskCardProps {
@@ -24,6 +26,13 @@ export function TaskCard({ completion, isExpanded, onToggle, onComplete, onPhoto
   const t = useTranslations('dashboard')
   const { locale } = useLocaleStore()
   const [showCamera, setShowCamera] = useState(false)
+  const [sopTracked, setSopTracked] = useState(false)
+
+  // Track SOP view when expanded with SOP steps visible
+  if (isExpanded && sop?.sop_steps?.length && !sopTracked) {
+    track(EVENTS.SOP_VIEW, { sop_id: sop.id, task_completion_id: completion.id })
+    setSopTracked(true)
+  }
   const template = completion.task_template
   const name = locale === 'es' ? template.name_es : template.name_en
   const description = locale === 'es' ? template.description_es : template.description_en

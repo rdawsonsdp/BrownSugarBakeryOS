@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react'
 import { NextIntlClientProvider } from 'next-intl'
 import { useLocaleStore } from '@/lib/stores/locale-store'
 import { AnimatePresence } from 'framer-motion'
+import { useTrackSession } from '@/lib/analytics/use-track-session'
 import enMessages from '../../messages/en.json'
 
 function LocaleProvider({ children }: { children: React.ReactNode }) {
@@ -20,6 +21,11 @@ function LocaleProvider({ children }: { children: React.ReactNode }) {
       {children}
     </NextIntlClientProvider>
   )
+}
+
+function SessionTracker() {
+  useTrackSession()
+  return null
 }
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -39,6 +45,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <LocaleProvider>
+        <SessionTracker />
         <AnimatePresence mode="wait">
           {children}
         </AnimatePresence>

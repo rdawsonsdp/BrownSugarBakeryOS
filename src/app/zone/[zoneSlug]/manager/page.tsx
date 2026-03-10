@@ -1,11 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { useTranslations } from 'next-intl'
 import { useLocaleStore } from '@/lib/stores/locale-store'
 import { useStaffAuth } from '@/lib/hooks/use-staff-auth'
+import { track } from '@/lib/analytics/track'
+import { EVENTS } from '@/lib/analytics/events'
 import { useRealtimeAll } from '@/lib/hooks/use-realtime'
 import { ZoneHeader } from '@/components/layout/zone-header'
 import { NotificationBell } from '@/components/layout/notification-bell'
@@ -24,6 +26,10 @@ export default function ManagerDashboardPage() {
   const { locale } = useLocaleStore()
   const { staff, zone, role, shift, isAuthenticated, logout } = useStaffAuth()
   const [activeTab, setActiveTab] = useState('dashboard')
+  const handleTabChange = useCallback((tab: string) => {
+    track(EVENTS.TAB_CHANGE, { from: activeTab, to: tab, dashboard: 'manager' })
+    setActiveTab(tab)
+  }, [activeTab])
 
   // Subscribe to realtime updates
   useRealtimeAll()
@@ -78,7 +84,7 @@ export default function ManagerDashboardPage() {
 
       <div className="max-w-lg mx-auto">
         <div className="px-4 pt-4">
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <Tabs value={activeTab} onValueChange={handleTabChange}>
             <TabsList>
               <TabsTrigger value="dashboard">{locale === 'es' ? 'Panel' : 'Dashboard'}</TabsTrigger>
               <TabsTrigger value="team">{t('myTeam')}</TabsTrigger>

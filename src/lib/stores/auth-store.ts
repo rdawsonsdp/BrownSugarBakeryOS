@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { track } from '@/lib/analytics/track'
+import { EVENTS } from '@/lib/analytics/events'
 
 export interface Staff {
   id: string
@@ -117,7 +119,8 @@ export const useAuthStore = create<AuthState>()(
           lastActivity: Date.now(),
         }),
 
-      logout: () =>
+      logout: () => {
+        track(EVENTS.SESSION_END)
         set({
           loginMode: null,
           selectedStaffId: null,
@@ -129,7 +132,8 @@ export const useAuthStore = create<AuthState>()(
           role: null,
           shift: null,
           isAuthenticated: false,
-        }),
+        })
+      },
 
       updateActivity: () => set({ lastActivity: Date.now() }),
       updateShift: (shift) => set({ shift }),

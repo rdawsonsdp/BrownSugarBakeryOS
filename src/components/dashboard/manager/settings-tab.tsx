@@ -3,6 +3,7 @@ import { useRouter } from 'next/navigation'
 import { Users, BarChart3, LogOut, Globe } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useLocaleStore } from '@/lib/stores/locale-store'
+import { AppVersion } from '@/components/layout/app-version'
 
 interface SettingsTabProps {
   onLogout: () => void
@@ -58,6 +59,12 @@ export function SettingsTab({ onLogout }: SettingsTabProps) {
         <Button variant="danger" onClick={onLogout} className="w-full">
           <LogOut className="w-4 h-4" /> {locale === 'es' ? 'Cerrar Sesion' : 'Sign Out'}
         </Button>
+      </div>
+
+      {/* About */}
+      <div className="text-center pt-2">
+        <p className="text-[11px] text-brown/30 mb-1">BakeryOS</p>
+        <AppVersion showBuild />
       </div>
     </div>
   )

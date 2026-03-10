@@ -6,6 +6,8 @@ import { motion } from 'framer-motion'
 import { useTranslations } from 'next-intl'
 import { useLocaleStore } from '@/lib/stores/locale-store'
 import { useStaffAuth } from '@/lib/hooks/use-staff-auth'
+import { track } from '@/lib/analytics/track'
+import { EVENTS } from '@/lib/analytics/events'
 import { useSOPs } from '@/lib/hooks/use-sops'
 import { useCategories } from '@/lib/hooks/use-categories'
 import { useRoleSopAssignments } from '@/lib/hooks/use-role-sop-assignments'
@@ -30,6 +32,7 @@ function SignOutButton({ onClick }: { onClick: () => void }) {
     </button>
   )
 }
+import { AppVersion } from '@/components/layout/app-version'
 import { SOPPrintCard } from '@/components/sop/sop-print-card'
 import type { SOPWithSteps } from '@/lib/types/database.types'
 
@@ -39,6 +42,10 @@ export default function StaffDashboardPage() {
   const { locale } = useLocaleStore()
   const { staff, zone, role, shift, isAuthenticated, logout } = useStaffAuth()
   const [activeTab, setActiveTab] = useState<'tasks' | 'sops' | 'profile'>('tasks')
+  const handleTabChange = useCallback((tab: 'tasks' | 'sops' | 'profile') => {
+    track(EVENTS.TAB_CHANGE, { from: activeTab, to: tab, dashboard: 'staff' })
+    setActiveTab(tab)
+  }, [activeTab])
   const { data: sops } = useSOPs(zone?.id)
   const { data: roleAssignments } = useRoleSopAssignments(role?.id ?? null)
   const { data: categories = [] } = useCategories()
@@ -59,6 +66,7 @@ export default function StaffDashboardPage() {
 
   const handleSaveNotes = useCallback(async (notes: string) => {
     if (!shift) return
+    track(EVENTS.SHIFT_NOTES_SAVE, { shift_id: shift.id, length: notes.length })
     try {
       await fetch('/api/shift-notes', {
         method: 'PATCH',
@@ -177,11 +185,14 @@ export default function StaffDashboardPage() {
             <Button variant="danger" onClick={handleLogout} className="w-full">
               <LogOut className="w-4 h-4" /> Sign Out
             </Button>
+            <div className="text-center pt-2">
+              <AppVersion showBuild />
+            </div>
           </div>
         )}
       </div>
 
-      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+      <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
 
       {/* Print view */}
       {printSop && <SOPPrintCard sop={printSop} categories={categories} />}

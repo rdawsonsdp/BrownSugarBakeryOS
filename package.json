@@ -3,10 +3,11 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "node scripts/generate-sw.js && next dev",
+    "build": "node scripts/generate-sw.js && next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "version:bump": "npm version patch && node scripts/generate-sw.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
