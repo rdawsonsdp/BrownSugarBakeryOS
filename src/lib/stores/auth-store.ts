@@ -42,6 +42,7 @@ export interface Shift {
   staff_id: string
   zone_id: string
   shift_type: 'opening' | 'mid' | 'closing'
+  shift_date: string
   started_at: string
   ended_at: string | null
 }

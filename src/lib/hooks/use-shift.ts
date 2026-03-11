@@ -2,13 +2,14 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
+import { getChicagoDate } from '@/lib/utils/timezone'
 
 export function useActiveShifts(zoneId?: string) {
   return useQuery({
     queryKey: ['active-shifts', zoneId],
     queryFn: async () => {
       const supabase = createClient()
-      const today = new Date().toISOString().split('T')[0]
+      const today = getChicagoDate()
 
       let query = supabase
         .from('shifts')
@@ -30,7 +31,7 @@ export function useZoneShiftCounts() {
     queryKey: ['zone-shift-counts'],
     queryFn: async () => {
       const supabase = createClient()
-      const today = new Date().toISOString().split('T')[0]
+      const today = getChicagoDate()
 
       const { data, error } = await supabase
         .from('shifts')

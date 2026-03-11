@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Bell, X, AlertTriangle, Clock } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
+import { getChicagoDate } from '@/lib/utils/timezone'
 import { useLocaleStore } from '@/lib/stores/locale-store'
 import { useAuthStore } from '@/lib/stores/auth-store'
 import { cn } from '@/lib/utils/cn'
@@ -40,7 +41,7 @@ export function NotificationBell() {
     queryFn: async () => {
       const supabase = createClient()
       const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString()
-      const today = new Date().toISOString().split('T')[0]
+      const today = getChicagoDate()
 
       const { data } = await supabase
         .from('task_completions')

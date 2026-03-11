@@ -11,6 +11,7 @@ import { AlertCard } from './alert-card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
+import { getChicagoDate } from '@/lib/utils/timezone'
 import { useState, useCallback } from 'react'
 import { CheckCircle2, Circle, User, Plus, Edit2, ChevronDown, Printer, GripVertical, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
@@ -146,7 +147,7 @@ export function OverviewTab({ zoneId }: OverviewTabProps) {
     queryKey: ['all-completions-today', zoneId],
     queryFn: async () => {
       const supabase = createClient()
-      const today = new Date().toISOString().split('T')[0]
+      const today = getChicagoDate()
 
       const { data, error } = await supabase
         .from('task_completions')

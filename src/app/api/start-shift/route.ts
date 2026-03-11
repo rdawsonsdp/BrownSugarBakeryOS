@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { getChicagoDate, getChicagoHour } from '@/lib/utils/timezone'
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,8 +11,8 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = await createClient()
-    const today = new Date().toISOString().split('T')[0]
-    const hour = new Date().getHours()
+    const today = getChicagoDate()
+    const hour = getChicagoHour()
     const shiftType = hour < 11 ? 'opening' : hour < 15 ? 'mid' : 'closing'
 
     // 1. Create or resume shift

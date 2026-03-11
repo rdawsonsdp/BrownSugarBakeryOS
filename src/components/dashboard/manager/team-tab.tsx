@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from '@/components/ui/dialog'
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
+import { getChicagoDate } from '@/lib/utils/timezone'
 import { formatRelative } from '@/lib/utils/format'
 
 interface StaffFormData {
@@ -60,7 +61,7 @@ export function TeamTab() {
     queryKey: ['staff-stats'],
     queryFn: async () => {
       const supabase = createClient()
-      const today = new Date().toISOString().split('T')[0]
+      const today = getChicagoDate()
 
       const { data: completions } = await supabase
         .from('task_completions')

@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
+import { getChicagoDate } from '@/lib/utils/timezone'
 import { track } from '@/lib/analytics/track'
 import { EVENTS } from '@/lib/analytics/events'
 import type { TaskCompletionWithTemplate } from '@/lib/types/database.types'
@@ -109,7 +110,7 @@ export function useAllTaskCompletions(zoneId?: string) {
     queryKey: ['all-task-completions', zoneId],
     queryFn: async () => {
       const supabase = createClient()
-      const today = new Date().toISOString().split('T')[0]
+      const today = getChicagoDate()
 
       let query = supabase
         .from('task_completions')

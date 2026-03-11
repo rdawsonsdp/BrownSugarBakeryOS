@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/lib/stores/auth-store'
 import { createClient } from '@/lib/supabase/client'
+import { getChicagoDate, getChicagoHour } from '@/lib/utils/timezone'
 import type { Zone } from '@/lib/types/database.types'
 
 export function useZoneSwitch() {
@@ -31,8 +32,8 @@ export function useZoneSwitch() {
       if (!resolvedRole) throw new Error('No manager role found')
 
       // Create or resume shift
-      const today = new Date().toISOString().split('T')[0]
-      const hour = new Date().getHours()
+      const today = getChicagoDate()
+      const hour = getChicagoHour()
       const shiftType = hour < 11 ? 'opening' : hour < 15 ? 'mid' : 'closing'
 
       const { data: existingShift } = await supabase
