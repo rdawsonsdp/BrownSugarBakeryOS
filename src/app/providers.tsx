@@ -4,7 +4,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState, useEffect } from 'react'
 import { NextIntlClientProvider } from 'next-intl'
 import { useLocaleStore } from '@/lib/stores/locale-store'
-import { AnimatePresence } from 'framer-motion'
 import { useTrackSession } from '@/lib/analytics/use-track-session'
 import enMessages from '../../messages/en.json'
 
@@ -46,9 +45,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <LocaleProvider>
         <SessionTracker />
-        <AnimatePresence mode="wait">
-          {children}
-        </AnimatePresence>
+        {children}
       </LocaleProvider>
     </QueryClientProvider>
   )

@@ -25,12 +25,19 @@ export async function POST(request: NextRequest) {
 
     let shift = existingShift
 
+    // Backfill role_id on existing shift if missing
+    if (shift && !shift.role_id) {
+      await supabase.from('shifts').update({ role_id }).eq('id', shift.id)
+      shift = { ...shift, role_id }
+    }
+
     if (!shift) {
       const { data: newShift, error: shiftError } = await supabase
         .from('shifts')
         .insert({
           staff_id,
           zone_id,
+          role_id,
           shift_type: shiftType,
           shift_date: today,
         })

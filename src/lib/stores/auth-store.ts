@@ -13,6 +13,9 @@ export interface Staff {
   preferred_language: 'en' | 'es'
   streak_count: number
   is_active: boolean
+  phone?: string | null
+  email?: string | null
+  role?: Role | null
 }
 
 export interface Zone {
@@ -45,11 +48,9 @@ export interface Shift {
 
 interface AuthState {
   // Pre-auth selection
-  loginMode: 'name' | 'role' | null
+  loginMode: 'name' | null
   selectedStaffId: string | null
   selectedStaff: Staff | null
-  selectedRole: Role | null
-  selectedZone: Zone | null
 
   // Authenticated state
   staff: Staff | null
@@ -61,8 +62,6 @@ interface AuthState {
 
   // Actions
   selectByName: (staff: Staff) => void
-  selectByRole: (role: Role) => void
-  setSelectedRole: (role: Role) => void
   setVerifiedStaff: (staff: Staff) => void
   setZone: (zone: Zone) => void
   setRole: (role: Role) => void
@@ -79,8 +78,6 @@ export const useAuthStore = create<AuthState>()(
       loginMode: null,
       selectedStaffId: null,
       selectedStaff: null,
-      selectedRole: null,
-      selectedZone: null,
       staff: null,
       zone: null,
       role: null,
@@ -89,13 +86,7 @@ export const useAuthStore = create<AuthState>()(
       lastActivity: Date.now(),
 
       selectByName: (staff) =>
-        set({ loginMode: 'name', selectedStaffId: staff.id, selectedStaff: staff, selectedRole: null, selectedZone: null }),
-
-      selectByRole: (role) =>
-        set({ loginMode: 'role', selectedRole: role, selectedZone: null, selectedStaffId: null, selectedStaff: null }),
-
-      setSelectedRole: (role) =>
-        set({ selectedRole: role }),
+        set({ loginMode: 'name', selectedStaffId: staff.id, selectedStaff: staff }),
 
       setVerifiedStaff: (staff) =>
         set({ selectedStaff: staff, selectedStaffId: staff.id }),
@@ -113,8 +104,6 @@ export const useAuthStore = create<AuthState>()(
           loginMode: null,
           selectedStaffId: null,
           selectedStaff: null,
-          selectedRole: null,
-          selectedZone: null,
           isAuthenticated: true,
           lastActivity: Date.now(),
         }),
@@ -125,8 +114,6 @@ export const useAuthStore = create<AuthState>()(
           loginMode: null,
           selectedStaffId: null,
           selectedStaff: null,
-          selectedRole: null,
-          selectedZone: null,
           staff: null,
           zone: null,
           role: null,
@@ -138,6 +125,17 @@ export const useAuthStore = create<AuthState>()(
       updateActivity: () => set({ lastActivity: Date.now() }),
       updateShift: (shift) => set({ shift }),
     }),
-    { name: 'bakeryos-auth' }
+    {
+      name: 'bakeryos-auth',
+      version: 2,
+      partialize: (state) => ({
+        staff: state.staff,
+        zone: state.zone,
+        role: state.role,
+        shift: state.shift,
+        isAuthenticated: state.isAuthenticated,
+        lastActivity: state.lastActivity,
+      }),
+    }
   )
 )

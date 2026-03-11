@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
   const supabase = await createClient()
   const body = await request.json()
 
-  const { first_name, last_name, display_name, pin, role_id, zone_id, preferred_language } = body
+  const { first_name, last_name, display_name, pin, role_id, zone_id, preferred_language, phone, email } = body
 
   if (!first_name || !last_name || !pin || !role_id || !zone_id) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -67,6 +67,8 @@ export async function POST(request: NextRequest) {
       role_id,
       zone_id,
       preferred_language: preferred_language || 'en',
+      phone: phone || null,
+      email: email || null,
       is_active: true,
       streak_count: 0,
     })

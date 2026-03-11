@@ -1,16 +1,15 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import Image from 'next/image'
 import { useQuery } from '@tanstack/react-query'
-import { createClient } from '@/lib/supabase/client'
 import { useAuthStore } from '@/lib/stores/auth-store'
 import { useLocaleStore } from '@/lib/stores/locale-store'
 import { Skeleton } from '@/components/ui/skeleton'
 import { LanguageToggle } from '@/components/layout/language-toggle'
-import { Shield, ClipboardList, Search, Zap } from 'lucide-react'
+import { Search, Zap } from 'lucide-react'
 import { AppVersion } from '@/components/layout/app-version'
 import { track } from '@/lib/analytics/track'
 import { EVENTS } from '@/lib/analytics/events'
@@ -37,9 +36,13 @@ function getLastLogin(): LastLogin | null {
 export default function LoginPage() {
   const router = useRouter()
   const { locale } = useLocaleStore()
-  const { selectByName, selectByRole } = useAuthStore()
+  const { selectByName } = useAuthStore()
   const [search, setSearch] = useState('')
-  const lastLogin = useMemo(() => getLastLogin(), [])
+  const [lastLogin, setLastLogin] = useState<LastLogin | null>(null)
+
+  useEffect(() => {
+    setLastLogin(getLastLogin())
+  }, [])
 
   // Fetch all active staff
   const { data: staffList, isLoading: staffLoading } = useQuery<
@@ -50,28 +53,6 @@ export default function LoginPage() {
       const res = await fetch('/api/staff?all_active=true')
       if (!res.ok) throw new Error('Failed to fetch staff')
       return res.json()
-    },
-  })
-
-  // Fetch roles (Staff / Manager type buttons)
-  const { data: roleTypes, isLoading: rolesLoading } = useQuery({
-    queryKey: ['login-role-types'],
-    queryFn: async () => {
-      const supabase = createClient()
-      const { data } = await supabase
-        .from('roles')
-        .select('*')
-        .order('sort_order')
-        .order('name_en')
-      const seen = new Set<boolean>()
-      const unique: typeof data = []
-      for (const r of data ?? []) {
-        if (!seen.has(r.is_manager)) {
-          seen.add(r.is_manager)
-          unique.push(r)
-        }
-      }
-      return unique
     },
   })
 
@@ -89,11 +70,6 @@ export default function LoginPage() {
 
   const handleNameSelect = (staff: NonNullable<typeof staffList>[0]) => {
     selectByName(staff as Parameters<typeof selectByName>[0])
-    router.push('/login/pin')
-  }
-
-  const handleRoleSelect = (role: NonNullable<typeof roleTypes>[0]) => {
-    selectByRole(role)
     router.push('/login/pin')
   }
 
@@ -132,7 +108,7 @@ export default function LoginPage() {
                 Brown Sugar Bakery
               </h1>
               <p className="text-brown/50 text-sm">
-                {locale === 'es' ? 'Selecciona tu Rol o Nombre' : 'Select Your Role or Name'}
+                {locale === 'es' ? '¿Quién eres?' : 'Who are you?'}
               </p>
             </div>
           </motion.div>
@@ -161,69 +137,11 @@ export default function LoginPage() {
           </motion.button>
         )}
 
-        {/* Section: By Role */}
+        {/* Section: Select Your Name */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05 }}
-          className="mb-5"
-        >
-          <h2 className="text-xs font-semibold text-brown/50 uppercase tracking-wider mb-3">
-            {locale === 'es' ? 'Selecciona tu Rol' : 'Select Your Role'}
-          </h2>
-          {rolesLoading ? (
-            <div className="grid grid-cols-2 gap-2">
-              <Skeleton className="h-16 w-full rounded-xl" />
-              <Skeleton className="h-16 w-full rounded-xl" />
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-3">
-              {roleTypes?.map((role, i) => {
-                const roleName = locale === 'es' ? role.name_es : role.name_en
-                const Icon = role.is_manager ? Shield : ClipboardList
-
-                return (
-                  <motion.button
-                    key={role.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.05 + i * 0.04 }}
-                    onClick={() => handleRoleSelect(role)}
-                    className={`flex items-center gap-3 p-4 rounded-xl bg-white border-2 hover:shadow-sm transition-all text-left active:scale-[0.97] ${
-                      role.is_manager
-                        ? 'border-gold/30 hover:border-gold'
-                        : 'border-brown/10 hover:border-brown/30'
-                    }`}
-                  >
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                      role.is_manager ? 'bg-gold/10' : 'bg-brown/5'
-                    }`}>
-                      <Icon className={`w-5 h-5 ${role.is_manager ? 'text-gold' : 'text-brown/40'}`} />
-                    </div>
-                    <span className="text-sm font-bold text-brown">
-                      {roleName}
-                    </span>
-                  </motion.button>
-                )
-              })}
-            </div>
-          )}
-        </motion.div>
-
-        {/* Divider */}
-        <div className="flex items-center gap-3 my-4">
-          <div className="flex-1 h-px bg-brown/10" />
-          <span className="text-[11px] font-medium text-brown/30 uppercase">
-            {locale === 'es' ? 'o' : 'or'}
-          </span>
-          <div className="flex-1 h-px bg-brown/10" />
-        </div>
-
-        {/* Section: By Name */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
         >
           <h2 className="text-xs font-semibold text-brown/50 uppercase tracking-wider mb-3">
             {locale === 'es' ? 'Selecciona tu Nombre' : 'Select Your Name'}
@@ -255,7 +173,7 @@ export default function LoginPage() {
                   key={staff.id}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 + i * 0.02 }}
+                  transition={{ delay: 0.05 + i * 0.02 }}
                   onClick={() => handleNameSelect(staff)}
                   className="flex items-center gap-2.5 p-3 rounded-xl bg-white border-2 border-brown/10 hover:border-brown/30 hover:shadow-sm transition-all text-left active:scale-[0.97]"
                 >

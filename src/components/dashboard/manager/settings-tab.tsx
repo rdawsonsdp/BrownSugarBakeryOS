@@ -1,6 +1,6 @@
 'use client'
 import { useRouter } from 'next/navigation'
-import { Users, BarChart3, LogOut, Globe } from 'lucide-react'
+import { Users, UserPlus, BarChart3, LogOut, Globe } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useLocaleStore } from '@/lib/stores/locale-store'
 import { AppVersion } from '@/components/layout/app-version'
@@ -17,6 +17,7 @@ export function SettingsTab({ onLogout }: SettingsTabProps) {
     {
       title: locale === 'es' ? 'Administracion' : 'Administration',
       items: [
+        { label: locale === 'es' ? 'Personal' : 'Staff', icon: UserPlus, onClick: () => router.push('/admin/staff') },
         { label: locale === 'es' ? 'Roles y Zonas' : 'Roles & Zones', icon: Users, onClick: () => router.push('/admin/roles') },
         { label: locale === 'es' ? 'Analiticas' : 'Analytics', icon: BarChart3, onClick: () => router.push('/admin/analytics') },
       ],
