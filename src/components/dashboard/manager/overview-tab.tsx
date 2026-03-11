@@ -1,23 +1,22 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
-import { AnimatePresence } from 'framer-motion'
 import { useZones } from '@/lib/hooks/use-zones'
 import { useActiveShifts } from '@/lib/hooks/use-shift'
 import { useZoneStaff } from '@/lib/hooks/use-staff'
 import { useSOPs } from '@/lib/hooks/use-sops'
 import { ZoneHealthCard } from './zone-health-card'
-import { AlertCard } from './alert-card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { getChicagoDate } from '@/lib/utils/timezone'
 import { useState, useCallback } from 'react'
-import { CheckCircle2, Circle, User, Plus, Edit2, ChevronDown, Printer, GripVertical, Trash2 } from 'lucide-react'
+import { CheckCircle2, Circle, User, Plus, Edit2, ChevronDown, Printer, GripVertical, Trash2, RotateCcw } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 import { useLocaleStore } from '@/lib/stores/locale-store'
 import { useAuthStore } from '@/lib/stores/auth-store'
-import { useAssignSOPStaff, useReorderSOPs, useDeleteSOP, useToggleSOPActive } from '@/lib/hooks/use-sop-mutations'
+import { useAssignSOPStaff, useReorderSOPs, useDeleteSOP } from '@/lib/hooks/use-sop-mutations'
+import { useResetTasks } from '@/lib/hooks/use-reset-tasks'
 import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { SOPEditor } from '@/components/sop/sop-editor'
@@ -55,7 +54,12 @@ export function OverviewTab({ zoneId }: OverviewTabProps) {
   const { data: activeShifts } = useActiveShifts()
   const { data: zoneStaff } = useZoneStaff(zoneId)
   const { data: zoneSops } = useSOPs(zoneId)
-  const [dismissedAlerts, setDismissedAlerts] = useState<string[]>([])
+
+  // Quick-add state
+  const [quickAddOpen, setQuickAddOpen] = useState(false)
+  const [quickAddName, setQuickAddName] = useState('')
+  const [quickAddAssign, setQuickAddAssign] = useState<string | null>(null)
+  const [quickAddSaving, setQuickAddSaving] = useState(false)
 
   // Editor state
   const [editorOpen, setEditorOpen] = useState(false)
@@ -68,8 +72,9 @@ export function OverviewTab({ zoneId }: OverviewTabProps) {
   const assignStaff = useAssignSOPStaff()
   const reorderSOPs = useReorderSOPs()
   const deleteSOP = useDeleteSOP()
-  const toggleActive = useToggleSOPActive()
+  const resetTasks = useResetTasks()
   const [deleteConfirm, setDeleteConfirm] = useState<{ sop: SOPWithSteps } | null>(null)
+  const [resetConfirmOpen, setResetConfirmOpen] = useState(false)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -159,6 +164,34 @@ export function OverviewTab({ zoneId }: OverviewTabProps) {
     },
   })
 
+  const handleQuickAdd = async () => {
+    if (!quickAddName.trim() || !zoneId) return
+    setQuickAddSaving(true)
+    try {
+      const res = await fetch('/api/sops', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name_en: quickAddName.trim(),
+          name_es: quickAddName.trim(),
+          zone_id: zoneId,
+          status: 'published',
+          is_active: true,
+          is_critical: false,
+          assigned_staff_id: quickAddAssign,
+          steps: [],
+        }),
+      })
+      if (res.ok) {
+        queryClient.invalidateQueries({ queryKey: ['sops'] })
+        setQuickAddName('')
+        setQuickAddAssign(null)
+        setQuickAddOpen(false)
+      }
+    } catch { /* */ }
+    setQuickAddSaving(false)
+  }
+
   const handleCreateNew = () => {
     setEditingSOP(undefined)
     setEditorOpen(true)
@@ -239,21 +272,11 @@ export function OverviewTab({ zoneId }: OverviewTabProps) {
     }
   }
 
-  // Find overdue critical tasks for this zone only
-  const overdueAlerts = allCompletions?.filter((c) => {
-    if (c.status === 'completed') return false
-    if (!c.task_template?.is_critical) return false
-    if (dismissedAlerts.includes(c.id)) return false
-    if (zoneId && c.task_template?.zone_id !== zoneId) return false
-    const created = new Date(c.created_at)
-    return Date.now() - created.getTime() > 30 * 60 * 1000
-  }) || []
-
   return (
     <div className="space-y-6 p-4">
       {/* Zone Health Card */}
       <div>
-        <h2 className="text-sm font-semibold text-brown/60 uppercase tracking-wider mb-3">
+        <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-3">
           {t('zoneHealth')}
         </h2>
         <div className="grid gap-3">
@@ -275,24 +298,88 @@ export function OverviewTab({ zoneId }: OverviewTabProps) {
       {/* Tasks organized by Role */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-brown/60 uppercase tracking-wider">
+          <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">
             {t('currentTasks')}
           </h2>
           <div className="flex gap-2">
             <button
+              onClick={() => setResetConfirmOpen(true)}
+              disabled={resetTasks.isPending}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary/10 text-text-primary text-xs font-semibold hover:bg-primary/20 transition-colors disabled:opacity-50"
+            >
+              <RotateCcw className={cn('w-3.5 h-3.5', resetTasks.isPending && 'animate-spin')} /> {locale === 'es' ? 'Reiniciar' : 'Reset Tasks'}
+            </button>
+            <button
               onClick={() => setPrintDialogOpen(true)}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-brown/10 text-brown text-xs font-semibold hover:bg-brown/20 transition-colors"
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary/10 text-text-primary text-xs font-semibold hover:bg-primary/20 transition-colors"
             >
               <Printer className="w-3.5 h-3.5" /> Print
             </button>
             <button
-              onClick={handleCreateNew}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-brown text-cream text-xs font-semibold hover:bg-brown-light transition-colors"
+              onClick={() => setQuickAddOpen(!quickAddOpen)}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors"
             >
-              <Plus className="w-3.5 h-3.5" /> Add Task
+              <Plus className="w-3.5 h-3.5" /> Quick Add
             </button>
           </div>
         </div>
+
+        {/* Quick Add Form */}
+        {quickAddOpen && (
+          <div className="bg-white border border-border rounded-xl p-3 space-y-3 mb-3">
+            <input
+              value={quickAddName}
+              onChange={(e) => setQuickAddName(e.target.value)}
+              placeholder={locale === 'es' ? 'Nombre de la tarea...' : 'Task name...'}
+              className="w-full px-3 py-2 rounded-lg border border-border text-sm text-text-primary placeholder:text-text-muted focus:border-primary focus:outline-none"
+              autoFocus
+              onKeyDown={(e) => { if (e.key === 'Enter') handleQuickAdd() }}
+            />
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                onClick={() => setQuickAddAssign(null)}
+                className={cn(
+                  'px-2.5 py-1 rounded-full text-xs font-medium border transition-colors',
+                  quickAddAssign === null
+                    ? 'bg-primary text-white border-primary'
+                    : 'bg-white text-text-secondary border-border'
+                )}
+              >
+                Unassigned
+              </button>
+              {zoneStaff?.filter((s) => s.is_active).map((s) => (
+                <button
+                  key={s.id}
+                  onClick={() => setQuickAddAssign(s.id)}
+                  className={cn(
+                    'px-2.5 py-1 rounded-full text-xs font-medium border transition-colors',
+                    quickAddAssign === s.id
+                      ? 'bg-primary text-white border-primary'
+                      : 'bg-white text-text-secondary border-border'
+                  )}
+                >
+                  {s.display_name}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center justify-between">
+              <button
+                onClick={handleCreateNew}
+                className="text-xs text-primary font-medium hover:text-primary-dark transition-colors"
+              >
+                {locale === 'es' ? 'Editor completo →' : 'Full editor →'}
+              </button>
+              <div className="flex gap-2">
+                <Button variant="ghost" size="sm" onClick={() => { setQuickAddOpen(false); setQuickAddName(''); setQuickAddAssign(null) }}>
+                  {locale === 'es' ? 'Cancelar' : 'Cancel'}
+                </Button>
+                <Button variant="primary" size="sm" onClick={handleQuickAdd} disabled={!quickAddName.trim() || quickAddSaving}>
+                  {quickAddSaving ? '...' : (locale === 'es' ? 'Agregar' : 'Add')}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {roleGroups.length > 0 ? (
           <div className="space-y-4">
@@ -304,13 +391,13 @@ export function OverviewTab({ zoneId }: OverviewTabProps) {
                 <div key={group.staffId || 'unassigned'} className="space-y-1.5">
                   {/* Role header */}
                   <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-brown/10 flex items-center justify-center">
-                      <User className="w-3.5 h-3.5 text-brown/40" />
+                    <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
+                      <User className="w-3.5 h-3.5 text-text-muted" />
                     </div>
-                    <span className="text-xs font-bold text-brown">
+                    <span className="text-xs font-bold text-text-primary">
                       {group.roleLabel}
                     </span>
-                    <span className="text-[10px] text-brown/40">
+                    <span className="text-[10px] text-text-muted">
                       {totalInGroup} {totalInGroup === 1 ? 'task' : 'tasks'}
                     </span>
                   </div>
@@ -343,31 +430,8 @@ export function OverviewTab({ zoneId }: OverviewTabProps) {
             })}
           </div>
         ) : (
-          <p className="text-sm text-brown/40 text-center py-6">No tasks yet</p>
+          <p className="text-sm text-text-muted text-center py-6">No tasks yet</p>
         )}
-      </div>
-
-      {/* Alerts */}
-      <div>
-        <h2 className="text-sm font-semibold text-brown/60 uppercase tracking-wider mb-3">
-          {t('alerts')}
-        </h2>
-        <AnimatePresence mode="popLayout">
-          {overdueAlerts.length > 0 ? (
-            <div className="space-y-2">
-              {overdueAlerts.map((alert) => (
-                <AlertCard
-                  key={alert.id}
-                  title={alert.task_template?.name_en || 'Task overdue'}
-                  type="overdue"
-                  onDismiss={() => setDismissedAlerts((prev) => [...prev, alert.id])}
-                />
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-brown/40 text-center py-6">{t('noAlerts')}</p>
-          )}
-        </AnimatePresence>
       </div>
 
       {/* SOP Editor Modal */}
@@ -385,17 +449,55 @@ export function OverviewTab({ zoneId }: OverviewTabProps) {
       {/* Delete Task Confirmation */}
       <Dialog open={!!deleteConfirm} onClose={() => setDeleteConfirm(null)}>
         <DialogHeader>
-          <DialogTitle>Remove Task</DialogTitle>
+          <DialogTitle>{locale === 'es' ? 'Eliminar tarea' : 'Delete Task'}</DialogTitle>
         </DialogHeader>
         <DialogContent>
-          <p className="text-sm text-brown/70">
-            Remove <strong>{deleteConfirm?.sop ? (locale === 'es' ? deleteConfirm.sop.name_es : deleteConfirm.sop.name_en) : ''}</strong> from the current task list?
+          <p className="text-sm text-text-secondary">
+            {locale === 'es' ? 'Eliminar' : 'Delete'} <strong>{deleteConfirm?.sop ? (locale === 'es' ? deleteConfirm.sop.name_es : deleteConfirm.sop.name_en) : ''}</strong>?
+            {' '}{locale === 'es' ? 'Se moverá a la biblioteca como borrador.' : 'It will be moved to the library as a draft.'}
           </p>
         </DialogContent>
         <DialogFooter>
-          <Button variant="ghost" onClick={() => setDeleteConfirm(null)}>Cancel</Button>
-          <Button variant="danger" onClick={() => confirmDelete(false)}>Delete Permanently</Button>
-          <Button variant="primary" onClick={() => confirmDelete(true)}>Save to Library</Button>
+          <Button variant="ghost" onClick={() => setDeleteConfirm(null)}>{locale === 'es' ? 'Cancelar' : 'Cancel'}</Button>
+          <Button variant="danger" onClick={() => confirmDelete(true)}>{locale === 'es' ? 'Eliminar' : 'Remove'}</Button>
+        </DialogFooter>
+      </Dialog>
+
+      {/* Reset Tasks Confirmation */}
+      <Dialog open={resetConfirmOpen} onClose={() => setResetConfirmOpen(false)}>
+        <DialogHeader>
+          <DialogTitle>{locale === 'es' ? 'Reiniciar tareas' : 'Reset All Tasks'}</DialogTitle>
+        </DialogHeader>
+        <DialogContent>
+          <p className="text-sm text-text-secondary">
+            {locale === 'es'
+              ? 'Esto eliminará todas las tareas completadas de los turnos activos de hoy y las regenerará desde las SOPs actuales. Esta acción no se puede deshacer.'
+              : 'This will delete all task completions for today\'s active shifts and regenerate them from current SOPs. This cannot be undone.'}
+          </p>
+          {resetTasks.isError && (
+            <p className="text-sm text-red mt-2 font-medium">
+              {locale === 'es' ? 'Error al reiniciar tareas. Intenta de nuevo.' : 'Failed to reset tasks. Please try again.'}
+            </p>
+          )}
+        </DialogContent>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => setResetConfirmOpen(false)}>
+            {locale === 'es' ? 'Cancelar' : 'Cancel'}
+          </Button>
+          <Button
+            variant="danger"
+            disabled={resetTasks.isPending}
+            onClick={() => {
+              if (!zoneId) return
+              resetTasks.mutate(zoneId, {
+                onSuccess: () => setResetConfirmOpen(false),
+              })
+            }}
+          >
+            {resetTasks.isPending
+              ? (locale === 'es' ? 'Reiniciando...' : 'Resetting...')
+              : (locale === 'es' ? 'Reiniciar' : 'Reset Tasks')}
+          </Button>
         </DialogFooter>
       </Dialog>
 
@@ -475,8 +577,8 @@ function SortableTaskItem({
         className={cn(
           'flex items-center gap-2 p-3 rounded-xl border transition-colors group',
           isCompleted
-            ? 'bg-brown/5 border-brown/5'
-            : 'bg-white border-brown/10',
+            ? 'bg-cream-dark border-border/50'
+            : 'bg-white border-border',
           isAssignOpen && 'rounded-b-none',
           isDragging && 'shadow-lg'
         )}
@@ -485,7 +587,7 @@ function SortableTaskItem({
         <button
           {...attributes}
           {...listeners}
-          className="touch-none p-1 -ml-1 cursor-grab active:cursor-grabbing text-brown/20 hover:text-brown/40 transition-colors"
+          className="touch-none p-1 -ml-1 cursor-grab active:cursor-grabbing text-text-muted hover:text-text-muted transition-colors"
         >
           <GripVertical className="w-4 h-4" />
         </button>
@@ -493,15 +595,15 @@ function SortableTaskItem({
         {isCompleted ? (
           <CheckCircle2 className="w-5 h-5 text-success flex-shrink-0" />
         ) : (
-          <Circle className="w-5 h-5 text-brown/20 flex-shrink-0" />
+          <Circle className="w-5 h-5 text-text-muted flex-shrink-0" />
         )}
         <div className="flex-1 min-w-0">
           <span
             className={cn(
               'text-sm block',
               isCompleted
-                ? 'line-through text-brown/30'
-                : 'text-brown font-medium'
+                ? 'line-through text-text-muted'
+                : 'text-text-primary font-medium'
             )}
           >
             {sopName}
@@ -511,8 +613,8 @@ function SortableTaskItem({
             className={cn(
               'inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[10px] font-medium border transition-colors',
               assignedName
-                ? 'bg-brown/5 border-brown/20 text-brown'
-                : 'bg-cream border-dashed border-brown/20 text-brown/40'
+                ? 'bg-cream-dark border-border text-text-primary'
+                : 'bg-cream border-dashed border-border text-text-muted'
             )}
           >
             <User className="w-3 h-3" />
@@ -525,13 +627,13 @@ function SortableTaskItem({
         )}
         <button
           onClick={() => onEdit(sop)}
-          className="p-1.5 rounded-lg text-brown/20 hover:text-brown hover:bg-brown/5 transition-colors"
+          className="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-cream-dark transition-colors"
         >
           <Edit2 className="w-3.5 h-3.5" />
         </button>
         <button
           onClick={() => onDelete(sop)}
-          className="p-1.5 rounded-lg text-brown/20 hover:text-red hover:bg-red/5 transition-colors"
+          className="p-1.5 rounded-lg text-text-muted hover:text-red hover:bg-red/5 transition-colors"
         >
           <Trash2 className="w-3.5 h-3.5" />
         </button>
@@ -539,16 +641,16 @@ function SortableTaskItem({
 
       {/* Inline assignment picker */}
       {isAssignOpen && (
-        <div className="px-3 pb-3 pt-2 bg-white border border-t-0 border-brown/10 rounded-b-xl">
-          <p className="text-[10px] font-semibold text-brown/50 uppercase mb-2">Assign to</p>
+        <div className="px-3 pb-3 pt-2 bg-white border border-t-0 border-border rounded-b-xl">
+          <p className="text-[10px] font-semibold text-text-secondary uppercase mb-2">Assign to</p>
           <div className="flex flex-wrap gap-1.5">
             <button
               onClick={() => { assignStaff.mutate({ id: sop.id, assigned_staff_id: null }); setAssignOpenId(null) }}
               className={cn(
                 'px-2.5 py-1 rounded-full text-xs font-medium border transition-colors',
                 !sop.assigned_staff_id
-                  ? 'bg-brown text-cream border-brown'
-                  : 'bg-white text-brown/60 border-brown/15 hover:border-brown/30'
+                  ? 'bg-primary text-white border-primary'
+                  : 'bg-white text-text-secondary border-border hover:border-border'
               )}
             >
               Unassigned
@@ -560,8 +662,8 @@ function SortableTaskItem({
                 className={cn(
                   'px-2.5 py-1 rounded-full text-xs font-medium border transition-colors',
                   sop.assigned_staff_id === s.id
-                    ? 'bg-brown text-cream border-brown'
-                    : 'bg-white text-brown/60 border-brown/15 hover:border-brown/30'
+                    ? 'bg-primary text-white border-primary'
+                    : 'bg-white text-text-secondary border-border hover:border-border'
                 )}
               >
                 {s.display_name}

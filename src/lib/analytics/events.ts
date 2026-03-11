@@ -18,6 +18,9 @@ export const EVENTS = {
   // Shift
   SHIFT_NOTES_SAVE: 'shift_notes_save',
 
+  // Manager Actions
+  TASKS_RESET: 'tasks_reset',
+
   // Login
   QUICK_START_USED: 'quick_start_used',
 } as const
