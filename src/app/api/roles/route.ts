@@ -7,6 +7,7 @@ export async function GET() {
   const { data, error } = await supabase
     .from('roles')
     .select('*, zone:zones(id, name_en, name_es, slug, color)')
+    .eq('is_active', true)
     .order('sort_order')
     .order('name_en')
 
@@ -83,7 +84,10 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: 'Role id required' }, { status: 400 })
   }
 
-  const { error } = await supabase.from('roles').delete().eq('id', id)
+  const { error } = await supabase
+    .from('roles')
+    .update({ is_active: false })
+    .eq('id', id)
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })

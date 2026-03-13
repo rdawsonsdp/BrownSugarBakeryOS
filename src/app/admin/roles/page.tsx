@@ -408,22 +408,25 @@ export default function AdminRolesPage() {
       {/* Delete Confirmation */}
       <Dialog open={!!deleteConfirm} onClose={() => setDeleteConfirm(null)}>
         <DialogHeader>
-          <DialogTitle>Delete Role</DialogTitle>
+          <DialogTitle>{locale === 'es' ? 'Eliminar Rol' : 'Remove Role'}</DialogTitle>
         </DialogHeader>
         <DialogContent>
           <p className="text-sm text-brown/70">
-            Are you sure you want to delete <strong>{deleteConfirm?.name_en}</strong>?
-            This cannot be undone.
+            {locale === 'es'
+              ? <>¿Estás seguro de que quieres eliminar <strong>{deleteConfirm?.name_es || deleteConfirm?.name_en}</strong>? El rol será desactivado.</>
+              : <>Are you sure you want to remove <strong>{deleteConfirm?.name_en}</strong>? The role will be deactivated.</>}
           </p>
         </DialogContent>
         <DialogFooter>
-          <Button variant="ghost" onClick={() => setDeleteConfirm(null)}>Cancel</Button>
+          <Button variant="ghost" onClick={() => setDeleteConfirm(null)}>
+            {locale === 'es' ? 'Cancelar' : 'Cancel'}
+          </Button>
           <Button
             variant="danger"
             onClick={() => deleteConfirm && deleteRole.mutate(deleteConfirm.id)}
             disabled={deleteRole.isPending}
           >
-            Delete
+            {locale === 'es' ? 'Eliminar' : 'Remove'}
           </Button>
         </DialogFooter>
       </Dialog>

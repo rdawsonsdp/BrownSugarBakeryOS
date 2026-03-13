@@ -30,6 +30,7 @@ export function useZoneRoles(zoneId: string) {
         .from('roles')
         .select('*')
         .eq('zone_id', zoneId)
+        .eq('is_active', true)
 
       if (error) throw error
       return data

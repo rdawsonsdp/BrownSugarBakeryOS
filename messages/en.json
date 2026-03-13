@@ -26,15 +26,15 @@
     "title": "Select Your Zone",
     "subtitle": "Where are you working today?",
     "foh": {
-      "name": "Front of House",
+      "name": "Front of the House",
       "description": "Customer service, register, display cases"
     },
-    "middle": {
-      "name": "Middle",
-      "description": "Decorating, packaging, assembly"
+    "maintenance": {
+      "name": "Maintenance / Delivery",
+      "description": "Maintenance, delivery, and facility operations"
     },
     "boh": {
-      "name": "Back of House",
+      "name": "Back of the House",
       "description": "Baking, prep, kitchen operations"
     },
     "activeStaff": "{count} staff active"

@@ -109,6 +109,7 @@ export default function AdminStaffPage() {
       const { data } = await supabase
         .from('roles')
         .select('*')
+        .eq('is_active', true)
         .order('sort_order')
         .order('name_en')
       return data ?? []

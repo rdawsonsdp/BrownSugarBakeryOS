@@ -26,15 +26,15 @@
     "title": "Selecciona Tu Zona",
     "subtitle": "¿Dónde trabajas hoy?",
     "foh": {
-      "name": "Frente",
+      "name": "Frente de la Casa",
       "description": "Servicio al cliente, caja, vitrinas"
     },
-    "middle": {
-      "name": "Medio",
-      "description": "Decoración, empaque, ensamblaje"
+    "maintenance": {
+      "name": "Mantenimiento / Entrega",
+      "description": "Mantenimiento, entrega y operaciones de instalaciones"
     },
     "boh": {
-      "name": "Cocina",
+      "name": "Parte Trasera",
       "description": "Horneado, preparación, operaciones de cocina"
     },
     "activeStaff": "{count} personal activo"

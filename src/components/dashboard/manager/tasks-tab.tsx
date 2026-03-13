@@ -51,7 +51,7 @@ export function TasksTab() {
     queryKey: ['all-roles'],
     queryFn: async () => {
       const supabase = createClient()
-      const { data } = await supabase.from('roles').select('*').order('sort_order').order('name_en')
+      const { data } = await supabase.from('roles').select('*').eq('is_active', true).order('sort_order').order('name_en')
       return data ?? []
     },
   })

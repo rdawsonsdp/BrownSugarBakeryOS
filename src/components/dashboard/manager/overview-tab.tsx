@@ -527,7 +527,7 @@ export function OverviewTab({ zoneId }: OverviewTabProps) {
 interface SortableTaskItemProps {
   sop: SOPWithSteps
   locale: string
-  allCompletions: Array<{ id: string; status: string; task_template?: { sop_id?: string } }> | undefined
+  allCompletions: Array<{ id: string; status: string; staff_id: string; task_template?: { sop_id?: string } }> | undefined
   assignOpenId: string | null
   setAssignOpenId: (id: string | null) => void
   assignStaff: ReturnType<typeof useAssignSOPStaff>
@@ -564,7 +564,9 @@ function SortableTaskItem({
   }
 
   const completion = allCompletions?.find(
-    (c) => c.task_template?.sop_id === sop.id
+    (c) =>
+      c.task_template?.sop_id === sop.id &&
+      (!sop.assigned_staff_id || c.staff_id === sop.assigned_staff_id)
   )
   const isCompleted = completion?.status === 'completed'
   const sopName = locale === 'es' ? sop.name_es : sop.name_en

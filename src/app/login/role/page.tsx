@@ -61,6 +61,7 @@ export default function LoginRolePage() {
         .select('*, zone:zones(*)')
         .eq('zone_id', userZoneId)
         .eq('is_manager', false)
+        .eq('is_active', true)
         .order('sort_order')
         .order('name_en')
       if (error) throw error
