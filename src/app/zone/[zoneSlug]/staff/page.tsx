@@ -20,15 +20,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { LogOut, Printer } from 'lucide-react'
+import { useTaskCompletions } from '@/lib/hooks/use-tasks'
+import { IncompleteTasksDialog } from '@/components/layout/incomplete-tasks-dialog'
 
-function SignOutButton({ onClick }: { onClick: () => void }) {
+function SignOutButton({ onClick, label }: { onClick: () => void; label: string }) {
   return (
     <button
       onClick={onClick}
       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 transition-colors text-white text-xs font-semibold"
     >
       <LogOut className="w-3.5 h-3.5" />
-      Sign Out
+      {label}
     </button>
   )
 }
@@ -42,10 +44,12 @@ export default function StaffDashboardPage() {
   const { locale } = useLocaleStore()
   const { staff, zone, role, shift, isAuthenticated, logout } = useStaffAuth()
   const [activeTab, setActiveTab] = useState<'tasks' | 'sops' | 'profile'>('tasks')
+  const [showSignOutWarning, setShowSignOutWarning] = useState(false)
   const handleTabChange = useCallback((tab: 'tasks' | 'sops' | 'profile') => {
     track(EVENTS.TAB_CHANGE, { from: activeTab, to: tab, dashboard: 'staff' })
     setActiveTab(tab)
   }, [activeTab])
+  const { data: completions } = useTaskCompletions(shift?.id)
   const { data: sops } = useSOPs(zone?.id)
   const { data: roleAssignments } = useRoleSopAssignments(role?.id ?? null)
   const { data: categories = [] } = useCategories()
@@ -87,7 +91,19 @@ export default function StaffDashboardPage() {
   const shiftLabel = t(`shift.${shift.shift_type}` as 'shift.opening')
   const roleName = locale === 'es' ? role.name_es : role.name_en
 
+  const incompleteTasks = completions?.filter((c) => c.status !== 'completed' && c.status !== 'skipped') || []
+
   const handleLogout = () => {
+    if (incompleteTasks.length > 0) {
+      setShowSignOutWarning(true)
+      return
+    }
+    logout()
+    router.push('/login')
+  }
+
+  const handleForceLogout = () => {
+    setShowSignOutWarning(false)
     logout()
     router.push('/login')
   }
@@ -113,7 +129,7 @@ export default function StaffDashboardPage() {
         streak={staff.streak_count}
         shiftType={shiftLabel}
         compact
-        rightSlot={<SignOutButton onClick={handleLogout} />}
+        rightSlot={<SignOutButton onClick={handleLogout} label={locale === 'es' ? 'Cerrar Sesión' : 'Sign Out'} />}
       />
       <OfflineBanner />
 
@@ -183,7 +199,7 @@ export default function StaffDashboardPage() {
               </CardContent>
             </Card>
             <Button variant="danger" onClick={handleLogout} className="w-full">
-              <LogOut className="w-4 h-4" /> Sign Out
+              <LogOut className="w-4 h-4" /> {locale === 'es' ? 'Cerrar Sesión' : 'Sign Out'}
             </Button>
             <div className="text-center pt-2">
               <AppVersion showBuild />
@@ -196,6 +212,15 @@ export default function StaffDashboardPage() {
 
       {/* Print view */}
       {printSop && <SOPPrintCard sop={printSop} categories={categories} />}
+
+      {/* Sign-out warning dialog */}
+      <IncompleteTasksDialog
+        open={showSignOutWarning}
+        onClose={() => setShowSignOutWarning(false)}
+        onConfirm={handleForceLogout}
+        incompleteCount={incompleteTasks.length}
+        totalCount={completions?.length || 0}
+      />
     </motion.div>
   )
 }

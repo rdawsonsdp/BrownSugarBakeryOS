@@ -18,6 +18,8 @@ import { SOPLibrary } from '@/components/sop/sop-library'
 import { SettingsTab } from '@/components/dashboard/manager/settings-tab'
 import { LogOut } from 'lucide-react'
 import { OfflineBanner } from '@/components/layout/offline-banner'
+import { useTaskCompletions } from '@/lib/hooks/use-tasks'
+import { IncompleteTasksDialog } from '@/components/layout/incomplete-tasks-dialog'
 
 export default function ManagerDashboardPage() {
   const router = useRouter()
@@ -26,6 +28,8 @@ export default function ManagerDashboardPage() {
   const { locale } = useLocaleStore()
   const { staff, zone, role, shift, isAuthenticated, logout } = useStaffAuth()
   const [activeTab, setActiveTab] = useState('dashboard')
+  const [showSignOutWarning, setShowSignOutWarning] = useState(false)
+  const { data: completions } = useTaskCompletions(shift?.id)
   const handleTabChange = useCallback((tab: string) => {
     track(EVENTS.TAB_CHANGE, { from: activeTab, to: tab, dashboard: 'manager' })
     setActiveTab(tab)
@@ -44,7 +48,19 @@ export default function ManagerDashboardPage() {
 
   const roleName = locale === 'es' ? role.name_es : role.name_en
 
+  const incompleteTasks = completions?.filter((c) => c.status !== 'completed' && c.status !== 'skipped') || []
+
   const handleLogout = () => {
+    if (incompleteTasks.length > 0) {
+      setShowSignOutWarning(true)
+      return
+    }
+    logout()
+    router.push('/login')
+  }
+
+  const handleForceLogout = () => {
+    setShowSignOutWarning(false)
     logout()
     router.push('/login')
   }
@@ -75,7 +91,7 @@ export default function ManagerDashboardPage() {
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 transition-colors text-white text-xs font-semibold"
             >
               <LogOut className="w-3.5 h-3.5" />
-              Sign Out
+              {locale === 'es' ? 'Cerrar Sesión' : 'Sign Out'}
             </button>
           </>
         }
@@ -110,6 +126,14 @@ export default function ManagerDashboardPage() {
           </Tabs>
         </div>
       </div>
+      {/* Sign-out warning dialog */}
+      <IncompleteTasksDialog
+        open={showSignOutWarning}
+        onClose={() => setShowSignOutWarning(false)}
+        onConfirm={handleForceLogout}
+        incompleteCount={incompleteTasks.length}
+        totalCount={completions?.length || 0}
+      />
     </motion.div>
   )
 }
