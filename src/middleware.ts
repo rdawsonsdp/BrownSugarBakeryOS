@@ -4,8 +4,7 @@ import { createServerClient } from '@supabase/ssr'
 export async function middleware(request: NextRequest) {
   const response = NextResponse.next({ request: { headers: request.headers } })
 
-  // Refresh Supabase session (for future admin auth)
-  createServerClient(
+  const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
@@ -21,6 +20,21 @@ export async function middleware(request: NextRequest) {
       },
     }
   )
+
+  // Refresh session on every request
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  // Protect /admin/* routes (except /admin/login)
+  const { pathname } = request.nextUrl
+  if (pathname.startsWith('/admin') && pathname !== '/admin/login') {
+    if (!user) {
+      const loginUrl = request.nextUrl.clone()
+      loginUrl.pathname = '/admin/login'
+      return NextResponse.redirect(loginUrl)
+    }
+  }
 
   return response
 }

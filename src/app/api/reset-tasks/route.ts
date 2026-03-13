@@ -2,8 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getChicagoDate, getChicagoHour } from '@/lib/utils/timezone'
 import { populateTasksForShift } from '@/lib/tasks/populate-tasks'
+import { requireManager } from '@/lib/auth/require-manager'
 
 export async function POST(request: NextRequest) {
+  const auth = await requireManager()
+  if (auth.error) return auth.error
+
   try {
     const { zone_id } = await request.json()
 

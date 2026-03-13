@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { requireManager } from '@/lib/auth/require-manager'
 
 export async function GET() {
   const supabase = await createClient()
@@ -19,6 +20,9 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const auth = await requireManager()
+  if (auth.error) return auth.error
+
   const supabase = await createClient()
   const body = await request.json()
 
@@ -45,6 +49,9 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
+  const auth = await requireManager()
+  if (auth.error) return auth.error
+
   const supabase = await createClient()
   const body = await request.json()
   const { id, ...fields } = body
@@ -76,6 +83,9 @@ export async function PUT(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const auth = await requireManager()
+  if (auth.error) return auth.error
+
   const supabase = await createClient()
   const { searchParams } = new URL(request.url)
   const id = searchParams.get('id')
