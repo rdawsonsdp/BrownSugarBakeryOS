@@ -32,6 +32,9 @@ export function useAssignSOPStaff() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sops'] })
+      // Also refresh task completions since the API cascades reassignment
+      queryClient.invalidateQueries({ queryKey: ['task-completions'] })
+      queryClient.invalidateQueries({ queryKey: ['all-completions-today'] })
     },
   })
 }

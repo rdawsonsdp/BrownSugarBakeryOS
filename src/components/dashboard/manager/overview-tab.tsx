@@ -252,7 +252,7 @@ export function OverviewTab({ zoneId }: OverviewTabProps) {
 
     for (const sop of zoneSops) {
       const key = sop.assigned_staff?.id || '__unassigned__'
-      const label = sop.assigned_staff?.display_name || 'Unassigned'
+      const label = sop.assigned_staff?.display_name || (locale === 'es' ? 'Sin asignar' : 'Unassigned')
 
       if (!grouped.has(key)) {
         grouped.set(key, { label, staffId: sop.assigned_staff?.id || null, sops: [] })
@@ -313,13 +313,13 @@ export function OverviewTab({ zoneId }: OverviewTabProps) {
               onClick={() => setPrintDialogOpen(true)}
               className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary/10 text-text-primary text-xs font-semibold hover:bg-primary/20 transition-colors"
             >
-              <Printer className="w-3.5 h-3.5" /> Print
+              <Printer className="w-3.5 h-3.5" /> {locale === 'es' ? 'Imprimir' : 'Print'}
             </button>
             <button
               onClick={() => setQuickAddOpen(!quickAddOpen)}
               className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors"
             >
-              <Plus className="w-3.5 h-3.5" /> Quick Add
+              <Plus className="w-3.5 h-3.5" /> {locale === 'es' ? 'Agregar' : 'Quick Add'}
             </button>
           </div>
         </div>
@@ -345,7 +345,7 @@ export function OverviewTab({ zoneId }: OverviewTabProps) {
                     : 'bg-white text-text-secondary border-border'
                 )}
               >
-                Unassigned
+                {locale === 'es' ? 'Sin asignar' : 'Unassigned'}
               </button>
               {zoneStaff?.filter((s) => s.is_active).map((s) => (
                 <button
@@ -398,7 +398,7 @@ export function OverviewTab({ zoneId }: OverviewTabProps) {
                       {group.roleLabel}
                     </span>
                     <span className="text-[10px] text-text-muted">
-                      {totalInGroup} {totalInGroup === 1 ? 'task' : 'tasks'}
+                      {totalInGroup} {totalInGroup === 1 ? (locale === 'es' ? 'tarea' : 'task') : (locale === 'es' ? 'tareas' : 'tasks')}
                     </span>
                   </div>
 
@@ -430,7 +430,7 @@ export function OverviewTab({ zoneId }: OverviewTabProps) {
             })}
           </div>
         ) : (
-          <p className="text-sm text-text-muted text-center py-6">No tasks yet</p>
+          <p className="text-sm text-text-muted text-center py-6">{locale === 'es' ? 'Aún no hay tareas' : 'No tasks yet'}</p>
         )}
       </div>
 
@@ -620,12 +620,12 @@ function SortableTaskItem({
             )}
           >
             <User className="w-3 h-3" />
-            {assignedName || 'Assign'}
+            {assignedName || (locale === 'es' ? 'Asignar' : 'Assign')}
             <ChevronDown className={cn('w-2.5 h-2.5 transition-transform', isAssignOpen && 'rotate-180')} />
           </button>
         </div>
         {sop.is_critical && !isCompleted && (
-          <span className="text-[10px] font-bold text-red uppercase">Critical</span>
+          <span className="text-[10px] font-bold text-red uppercase">{locale === 'es' ? 'Crítico' : 'Critical'}</span>
         )}
         <button
           onClick={() => onEdit(sop)}
@@ -644,7 +644,7 @@ function SortableTaskItem({
       {/* Inline assignment picker */}
       {isAssignOpen && (
         <div className="px-3 pb-3 pt-2 bg-white border border-t-0 border-border rounded-b-xl">
-          <p className="text-[10px] font-semibold text-text-secondary uppercase mb-2">Assign to</p>
+          <p className="text-[10px] font-semibold text-text-secondary uppercase mb-2">{locale === 'es' ? 'Asignar a' : 'Assign to'}</p>
           <div className="flex flex-wrap gap-1.5">
             <button
               onClick={() => { assignStaff.mutate({ id: sop.id, assigned_staff_id: null }); setAssignOpenId(null) }}
@@ -655,7 +655,7 @@ function SortableTaskItem({
                   : 'bg-white text-text-secondary border-border hover:border-border'
               )}
             >
-              Unassigned
+              {locale === 'es' ? 'Sin asignar' : 'Unassigned'}
             </button>
             {zoneStaff?.filter((s) => s.is_active).map((s) => (
               <button

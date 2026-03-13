@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Printer, Check } from 'lucide-react'
 import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from '@/components/ui/dialog'
+import { useLocaleStore } from '@/lib/stores/locale-store'
 import { cn } from '@/lib/utils/cn'
 import type { SOPWithSteps } from '@/lib/types/database.types'
 
@@ -30,6 +31,7 @@ interface PrintSelectDialogProps {
 }
 
 export function PrintSelectDialog({ open, onClose, onPrint, roleGroups }: PrintSelectDialogProps) {
+  const { locale } = useLocaleStore()
   const allKeys = roleGroups.map((g) => g.staffId || '__unassigned__')
   const [selected, setSelected] = useState<Set<string>>(new Set(allKeys))
   const [size, setSize] = useState<PrintSize>('letter')
@@ -65,10 +67,10 @@ export function PrintSelectDialog({ open, onClose, onPrint, roleGroups }: PrintS
   return (
     <Dialog open={open} onClose={onClose}>
       <DialogHeader>
-        <DialogTitle>Print Task Sheets</DialogTitle>
+        <DialogTitle>{locale === 'es' ? 'Imprimir Hojas de Tareas' : 'Print Task Sheets'}</DialogTitle>
       </DialogHeader>
       <DialogContent>
-        <p className="text-sm text-brown/50 mb-4">Select which task sheets to print. Each person gets their own page.</p>
+        <p className="text-sm text-brown/50 mb-4">{locale === 'es' ? 'Selecciona qué hojas imprimir. Cada persona tiene su propia página.' : 'Select which task sheets to print. Each person gets their own page.'}</p>
 
         {/* All toggle */}
         <button
@@ -86,8 +88,8 @@ export function PrintSelectDialog({ open, onClose, onPrint, roleGroups }: PrintS
           )}>
             {isAllSelected && <Check className="w-3.5 h-3.5 text-brown" />}
           </div>
-          <span className="text-sm font-bold">Print All</span>
-          <span className="text-xs opacity-60 ml-auto">{allKeys.length} sheets</span>
+          <span className="text-sm font-bold">{locale === 'es' ? 'Imprimir Todo' : 'Print All'}</span>
+          <span className="text-xs opacity-60 ml-auto">{allKeys.length} {locale === 'es' ? 'hojas' : 'sheets'}</span>
         </button>
 
         {/* Individual role/staff buttons */}
@@ -115,7 +117,7 @@ export function PrintSelectDialog({ open, onClose, onPrint, roleGroups }: PrintS
                 </div>
                 <span className="text-sm font-semibold text-brown">{group.roleLabel}</span>
                 <span className="text-[11px] text-brown/40 ml-auto">
-                  {group.sops.length} {group.sops.length === 1 ? 'task' : 'tasks'}
+                  {group.sops.length} {group.sops.length === 1 ? (locale === 'es' ? 'tarea' : 'task') : (locale === 'es' ? 'tareas' : 'tasks')}
                 </span>
               </button>
             )
@@ -123,7 +125,7 @@ export function PrintSelectDialog({ open, onClose, onPrint, roleGroups }: PrintS
         </div>
         {/* Page size picker */}
         <div className="mt-4 pt-4 border-t border-brown/10">
-          <p className="text-xs font-medium text-brown/60 mb-2">Paper Size</p>
+          <p className="text-xs font-medium text-brown/60 mb-2">{locale === 'es' ? 'Tamaño de Papel' : 'Paper Size'}</p>
           <div className="flex gap-2">
             <button
               onClick={() => setSize('letter')}
@@ -139,7 +141,7 @@ export function PrintSelectDialog({ open, onClose, onPrint, roleGroups }: PrintS
                 size === 'letter' ? 'border-brown' : 'border-brown/20'
               )} />
               <span className="text-xs font-semibold text-brown">8.5 x 11</span>
-              <span className="text-[10px] text-brown/40">Full Page</span>
+              <span className="text-[10px] text-brown/40">{locale === 'es' ? 'Página Completa' : 'Full Page'}</span>
             </button>
             <button
               onClick={() => setSize('index')}
@@ -155,7 +157,7 @@ export function PrintSelectDialog({ open, onClose, onPrint, roleGroups }: PrintS
                 size === 'index' ? 'border-brown' : 'border-brown/20'
               )} />
               <span className="text-xs font-semibold text-brown">4 x 6</span>
-              <span className="text-[10px] text-brown/40">Index Card</span>
+              <span className="text-[10px] text-brown/40">{locale === 'es' ? 'Tarjeta' : 'Index Card'}</span>
             </button>
           </div>
         </div>
@@ -165,7 +167,7 @@ export function PrintSelectDialog({ open, onClose, onPrint, roleGroups }: PrintS
           onClick={onClose}
           className="px-4 py-2 rounded-xl text-sm font-semibold text-brown/60 hover:bg-brown/5 transition-colors"
         >
-          Cancel
+          {locale === 'es' ? 'Cancelar' : 'Cancel'}
         </button>
         <button
           onClick={() => onPrint(Array.from(selected), size)}
@@ -178,7 +180,7 @@ export function PrintSelectDialog({ open, onClose, onPrint, roleGroups }: PrintS
           )}
         >
           <Printer className="w-4 h-4" />
-          Print{selected.size > 0 && selected.size < allKeys.length ? ` (${selected.size})` : ''}
+          {locale === 'es' ? 'Imprimir' : 'Print'}{selected.size > 0 && selected.size < allKeys.length ? ` (${selected.size})` : ''}
         </button>
       </DialogFooter>
     </Dialog>
@@ -276,7 +278,7 @@ export function PrintTaskSheet({ roleGroups, selectedKeys, locale, zoneName, pag
               </div>
               {!isIndex && (
                 <div style={{ fontSize: '13px', fontWeight: 600, color: '#555', marginTop: '4px', letterSpacing: '0.5px' }}>
-                  Daily Task List
+                  {locale === 'es' ? 'Lista de Tareas Diarias' : 'Daily Task List'}
                 </div>
               )}
             </div>
@@ -291,11 +293,11 @@ export function PrintTaskSheet({ roleGroups, selectedKeys, locale, zoneName, pag
               fontSize: isIndex ? '8px' : '13px',
             }}>
               <div>
-                <span style={{ fontWeight: 800, color: '#000' }}>Date: </span>
+                <span style={{ fontWeight: 800, color: '#000' }}>{locale === 'es' ? 'Fecha: ' : 'Date: '}</span>
                 <span style={{ color: '#333' }}>{dateStr}</span>
               </div>
               <div>
-                <span style={{ fontWeight: 800, color: '#000' }}>Zone: </span>
+                <span style={{ fontWeight: 800, color: '#000' }}>{locale === 'es' ? 'Zona: ' : 'Zone: '}</span>
                 <span style={{ color: '#333' }}>{zoneName}</span>
               </div>
               {!isIndex && (
@@ -420,7 +422,7 @@ export function PrintTaskSheet({ roleGroups, selectedKeys, locale, zoneName, pag
                           letterSpacing: '0.5px',
                           verticalAlign: 'middle',
                         }}>
-                          Priority
+                          {locale === 'es' ? 'Prioridad' : 'Priority'}
                         </span>
                       )}
                     </div>
@@ -456,7 +458,7 @@ export function PrintTaskSheet({ roleGroups, selectedKeys, locale, zoneName, pag
                     )}
 
                     <div style={{ marginTop: hasSteps ? '8px' : '6px', fontSize: '9px', fontWeight: 600, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                      Notes
+                      {locale === 'es' ? 'Notas' : 'Notes'}
                     </div>
                     <div style={{ borderBottom: '1px solid #bbb', marginTop: '12px' }} />
                     <div style={{ borderBottom: '1px solid #ddd', marginTop: '14px' }} />
@@ -502,11 +504,11 @@ export function PrintTaskSheet({ roleGroups, selectedKeys, locale, zoneName, pag
                 fontSize: '11px',
               }}>
                 <div style={{ display: 'flex', alignItems: 'flex-end', gap: '6px' }}>
-                  <span style={{ fontWeight: 700, color: '#000' }}>Signed:</span>
+                  <span style={{ fontWeight: 700, color: '#000' }}>{locale === 'es' ? 'Firma:' : 'Signed:'}</span>
                   <span style={{ display: 'inline-block', width: '200px', borderBottom: '1.5px solid #555' }}>&nbsp;</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'flex-end', gap: '6px' }}>
-                  <span style={{ fontWeight: 700, color: '#000' }}>Time:</span>
+                  <span style={{ fontWeight: 700, color: '#000' }}>{locale === 'es' ? 'Hora:' : 'Time:'}</span>
                   <span style={{ display: 'inline-block', width: '100px', borderBottom: '1.5px solid #555' }}>&nbsp;</span>
                 </div>
                 <span style={{ fontSize: '9px', color: '#aaa' }}>BakeryOS</span>

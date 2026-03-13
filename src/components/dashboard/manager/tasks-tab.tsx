@@ -155,7 +155,7 @@ export function TasksTab() {
           <button
             onClick={() => setCategoriesManagerOpen(true)}
             className="p-2 rounded-lg text-brown/40 hover:text-brown hover:bg-brown/5 transition-colors"
-            title="Manage Categories"
+            title={locale === 'es' ? 'Administrar Categorías' : 'Manage Categories'}
           >
             <Settings className="w-4 h-4" />
           </button>
@@ -207,7 +207,7 @@ export function TasksTab() {
         {groupedByRole.map((group) => {
           const roleName = group.role
             ? (locale === 'es' ? group.role.name_es : group.role.name_en)
-            : 'Unassigned'
+            : (locale === 'es' ? 'Sin asignar' : 'Unassigned')
           const RoleIcon = group.role?.is_manager ? Shield : ClipboardList
 
           return (
@@ -228,7 +228,7 @@ export function TasksTab() {
                   {roleName}
                 </span>
                 <span className="text-[10px] text-brown/40 ml-auto">
-                  {group.sops.length} {group.sops.length === 1 ? 'task' : 'tasks'}
+                  {group.sops.length} {group.sops.length === 1 ? (locale === 'es' ? 'tarea' : 'task') : (locale === 'es' ? 'tareas' : 'tasks')}
                 </span>
               </div>
 
@@ -253,7 +253,7 @@ export function TasksTab() {
           )
         })}
         {filteredSOPs?.length === 0 && (
-          <p className="text-sm text-brown/40 text-center py-6">No SOPs found</p>
+          <p className="text-sm text-brown/40 text-center py-6">{locale === 'es' ? 'No se encontraron tareas' : 'No SOPs found'}</p>
         )}
       </div>
 
@@ -367,7 +367,7 @@ function SOPCard({
             )}
           >
             <User className="w-3 h-3" />
-            {assignedName || 'Assign'}
+            {assignedName || (locale === 'es' ? 'Asignar' : 'Assign')}
             <ChevronDown className="w-2.5 h-2.5" />
           </button>
         </div>
@@ -415,7 +415,7 @@ function SOPCard({
       {/* Inline assignment picker */}
       {assignOpen && (
         <div className="px-4 pb-3 border-t border-brown/5 pt-2">
-          <p className="text-[10px] font-semibold text-brown/50 uppercase mb-2">Assign to</p>
+          <p className="text-[10px] font-semibold text-brown/50 uppercase mb-2">{locale === 'es' ? 'Asignar a' : 'Assign to'}</p>
           <div className="flex flex-wrap gap-1.5">
             <button
               onClick={() => { onAssign(null); setAssignOpen(false) }}
@@ -426,7 +426,7 @@ function SOPCard({
                   : 'bg-white text-brown/60 border-brown/15 hover:border-brown/30'
               )}
             >
-              Unassigned
+              {locale === 'es' ? 'Sin asignar' : 'Unassigned'}
             </button>
             {staffList.filter((s) => s.is_active).map((s) => (
               <button

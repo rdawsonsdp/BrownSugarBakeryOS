@@ -66,6 +66,9 @@ export function NotificationBell() {
 
   const minutesAgo = (dateStr: string) => {
     const mins = Math.round((Date.now() - new Date(dateStr).getTime()) / 60000)
+    if (locale === 'es') {
+      return mins < 60 ? `hace ${mins}m` : `hace ${Math.round(mins / 60)}h`
+    }
     return mins < 60 ? `${mins}m ago` : `${Math.round(mins / 60)}h ago`
   }
 

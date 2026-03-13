@@ -205,10 +205,10 @@ export default function AdminRolesPage() {
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
-            <h1 className="text-lg font-bold">Roles & Zones</h1>
+            <h1 className="text-lg font-bold">{locale === 'es' ? 'Roles y Zonas' : 'Roles & Zones'}</h1>
           </div>
           <Button variant="gold" size="sm" onClick={handleCreate} className="gap-1">
-            <Plus className="w-4 h-4" /> Add Role
+            <Plus className="w-4 h-4" /> {locale === 'es' ? 'Agregar Rol' : 'Add Role'}
           </Button>
         </div>
       </div>
@@ -251,7 +251,7 @@ export default function AdminRolesPage() {
                 <div className="flex items-center gap-2 mb-2">
                   <MapPin className="w-3 h-3 text-brown/30" />
                   <h2 className="text-xs font-semibold text-brown/30 uppercase tracking-wider">
-                    No Zone Assigned
+                    {locale === 'es' ? 'Sin Zona Asignada' : 'No Zone Assigned'}
                   </h2>
                 </div>
                 <div className="space-y-2">
@@ -271,7 +271,7 @@ export default function AdminRolesPage() {
 
             {(!roles || roles.length === 0) && (
               <p className="text-center text-brown/40 text-sm py-8">
-                No roles yet. Click &quot;Add Role&quot; to create one.
+                {locale === 'es' ? 'No hay roles. Haz clic en "Agregar Rol" para crear uno.' : 'No roles yet. Click "Add Role" to create one.'}
               </p>
             )}
           </>
@@ -281,7 +281,7 @@ export default function AdminRolesPage() {
       {/* Add/Edit Role Dialog */}
       <Dialog open={dialogOpen} onClose={() => { setDialogOpen(false); setForm(emptyForm) }}>
         <DialogHeader>
-          <DialogTitle>{form.id ? 'Edit Role' : 'New Role'}</DialogTitle>
+          <DialogTitle>{form.id ? (locale === 'es' ? 'Editar Rol' : 'Edit Role') : (locale === 'es' ? 'Nuevo Rol' : 'New Role')}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <DialogContent>
@@ -289,7 +289,7 @@ export default function AdminRolesPage() {
               {/* Name EN */}
               <div>
                 <label className="text-xs font-semibold text-brown/60 uppercase block mb-1">
-                  Name (English)
+                  {locale === 'es' ? 'Nombre (Inglés)' : 'Name (English)'}
                 </label>
                 <input
                   type="text"
@@ -314,8 +314,8 @@ export default function AdminRolesPage() {
               {/* Name ES */}
               <div>
                 <label className="text-xs font-semibold text-brown/60 uppercase block mb-1">
-                  Name (Spanish)
-                  <span className="text-brown/30 font-normal normal-case ml-1">— auto-translated</span>
+                  {locale === 'es' ? 'Nombre (Español)' : 'Name (Spanish)'}
+                  <span className="text-brown/30 font-normal normal-case ml-1">— {locale === 'es' ? 'auto-traducido' : 'auto-translated'}</span>
                 </label>
                 <input
                   type="text"
@@ -330,14 +330,14 @@ export default function AdminRolesPage() {
               {/* Zone */}
               <div>
                 <label className="text-xs font-semibold text-brown/60 uppercase block mb-1">
-                  Assigned Zone
+                  {locale === 'es' ? 'Zona Asignada' : 'Assigned Zone'}
                 </label>
                 <select
                   value={form.zone_id || ''}
                   onChange={(e) => setForm((f) => ({ ...f, zone_id: e.target.value || null }))}
                   className="w-full px-3 py-2 rounded-lg border border-brown/20 bg-white text-brown text-sm focus:border-brown focus:outline-none"
                 >
-                  <option value="">— No Zone —</option>
+                  <option value="">{locale === 'es' ? '— Sin Zona —' : '— No Zone —'}</option>
                   {zones?.map((z) => (
                     <option key={z.id} value={z.id}>
                       {locale === 'es' ? z.name_es : z.name_en}
@@ -350,7 +350,7 @@ export default function AdminRolesPage() {
               <div className="flex gap-4">
                 <div className="flex-1">
                   <label className="text-xs font-semibold text-brown/60 uppercase block mb-1">
-                    Type
+                    {locale === 'es' ? 'Tipo' : 'Type'}
                   </label>
                   <div className="flex gap-2">
                     <button
@@ -363,7 +363,7 @@ export default function AdminRolesPage() {
                           : 'bg-white text-brown/60 border-brown/20'
                       )}
                     >
-                      Staff
+                      {locale === 'es' ? 'Personal' : 'Staff'}
                     </button>
                     <button
                       type="button"
@@ -375,13 +375,13 @@ export default function AdminRolesPage() {
                           : 'bg-white text-brown/60 border-brown/20'
                       )}
                     >
-                      Manager
+                      {locale === 'es' ? 'Gerente' : 'Manager'}
                     </button>
                   </div>
                 </div>
                 <div className="w-24">
                   <label className="text-xs font-semibold text-brown/60 uppercase block mb-1">
-                    Order
+                    {locale === 'es' ? 'Orden' : 'Order'}
                   </label>
                   <input
                     type="number"
@@ -396,10 +396,10 @@ export default function AdminRolesPage() {
           </DialogContent>
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => { setDialogOpen(false); setForm(emptyForm) }}>
-              Cancel
+              {locale === 'es' ? 'Cancelar' : 'Cancel'}
             </Button>
             <Button type="submit" disabled={saveRole.isPending || !form.name_en || !form.name_es}>
-              {saveRole.isPending ? 'Saving...' : form.id ? 'Update' : 'Create'}
+              {saveRole.isPending ? (locale === 'es' ? 'Guardando...' : 'Saving...') : form.id ? (locale === 'es' ? 'Actualizar' : 'Update') : (locale === 'es' ? 'Crear' : 'Create')}
             </Button>
           </DialogFooter>
         </form>
@@ -470,7 +470,7 @@ function RoleCard({
         <div className="flex-1 min-w-0">
           <span className="text-sm font-bold text-brown block">{roleName}</span>
           <span className="text-[10px] text-brown/40">
-            {role.is_manager ? 'Manager' : 'Staff'}
+            {role.is_manager ? (locale === 'es' ? 'Gerente' : 'Manager') : (locale === 'es' ? 'Personal' : 'Staff')}
             {role.sort_order != null && ` · #${role.sort_order}`}
           </span>
         </div>
@@ -482,7 +482,7 @@ function RoleCard({
               showTasks ? 'bg-brown/10 text-brown' : 'bg-brown/5 text-brown/40 hover:text-brown/60'
             )}
           >
-            Tasks
+            {locale === 'es' ? 'Tareas' : 'Tasks'}
             <ChevronDown className={cn('w-3 h-3 transition-transform', showTasks && 'rotate-180')} />
           </button>
         )}
@@ -531,14 +531,14 @@ function RoleTaskAssignment({ roleId, zoneId, locale }: { roleId: string; zoneId
 
   if (!sops || sops.length === 0) {
     return (
-      <p className="px-3 pb-3 text-xs text-brown/30">No SOPs in this zone</p>
+      <p className="px-3 pb-3 text-xs text-brown/30">{locale === 'es' ? 'Sin tareas en esta zona' : 'No SOPs in this zone'}</p>
     )
   }
 
   return (
     <div className="px-3 pb-3 border-t border-brown/5 pt-2 space-y-1">
       <p className="text-[10px] font-semibold text-brown/40 uppercase tracking-wider mb-1.5">
-        Assigned SOPs
+        {locale === 'es' ? 'SOPs Asignados' : 'Assigned SOPs'}
       </p>
       {sops.map((sop) => {
         const isOn = assignedIds.has(sop.id)
@@ -566,7 +566,7 @@ function RoleTaskAssignment({ roleId, zoneId, locale }: { roleId: string; zoneId
               {name}
             </span>
             {sop.is_critical && (
-              <span className="text-[9px] font-bold text-red uppercase ml-auto">Critical</span>
+              <span className="text-[9px] font-bold text-red uppercase ml-auto">{locale === 'es' ? 'Crítico' : 'Critical'}</span>
             )}
           </button>
         )

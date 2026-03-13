@@ -149,7 +149,7 @@ export function TaskList({ shiftId, zoneId }: TaskListProps) {
               onClick={() => setPrintDialogOpen(true)}
               className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-brown/10 text-brown text-xs font-semibold hover:bg-brown/20 transition-colors"
             >
-              <Printer className="w-3.5 h-3.5" /> Print
+              <Printer className="w-3.5 h-3.5" /> {locale === 'es' ? 'Imprimir' : 'Print'}
             </button>
             <span className="font-bold text-brown">{percent}%</span>
           </div>
@@ -169,7 +169,7 @@ export function TaskList({ shiftId, zoneId }: TaskListProps) {
         if (!completions || completions.length === 0) {
           return (
             <div className="text-center py-12 text-brown/40">
-              <p className="text-lg font-semibold">No tasks for this shift</p>
+              <p className="text-lg font-semibold">{locale === 'es' ? 'No hay tareas para este turno' : 'No tasks for this shift'}</p>
             </div>
           )
         }
@@ -269,7 +269,8 @@ export function TaskList({ shiftId, zoneId }: TaskListProps) {
       {/* Undo toast */}
       <UndoToast
         visible={!!undoToast}
-        message={undoToast ? `"${undoToast.name}" completed` : ''}
+        message={undoToast ? `"${undoToast.name}" ${locale === 'es' ? 'completada' : 'completed'}` : ''}
+        undoLabel={locale === 'es' ? 'Deshacer' : 'Undo'}
         onUndo={handleUndo}
         onDismiss={() => setUndoToast(null)}
       />

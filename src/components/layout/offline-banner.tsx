@@ -2,8 +2,10 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { WifiOff, Wifi } from 'lucide-react'
+import { useLocaleStore } from '@/lib/stores/locale-store'
 
 export function OfflineBanner() {
+  const { locale } = useLocaleStore()
   const [isOnline, setIsOnline] = useState(true)
   const [showReconnected, setShowReconnected] = useState(false)
 
@@ -39,7 +41,7 @@ export function OfflineBanner() {
         >
           <div className="flex items-center justify-center gap-2 px-4 py-2 text-xs font-semibold">
             <WifiOff className="w-3.5 h-3.5" />
-            You&apos;re offline. Changes will sync when connected.
+            {locale === 'es' ? 'Sin conexión. Los cambios se sincronizarán al reconectarse.' : "You're offline. Changes will sync when connected."}
           </div>
         </motion.div>
       )}
@@ -52,7 +54,7 @@ export function OfflineBanner() {
         >
           <div className="flex items-center justify-center gap-2 px-4 py-2 text-xs font-semibold">
             <Wifi className="w-3.5 h-3.5" />
-            Back online!
+            {locale === 'es' ? '¡Conectado de nuevo!' : 'Back online!'}
           </div>
         </motion.div>
       )}

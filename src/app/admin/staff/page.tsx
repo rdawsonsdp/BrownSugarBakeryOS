@@ -592,7 +592,7 @@ export default function AdminStaffPage() {
                 {rolesForZone.map((r) => (
                   <option key={r.id} value={r.id}>
                     {locale === 'es' ? r.name_es : r.name_en}
-                    {r.is_manager ? ' (Manager)' : ''}
+                    {r.is_manager ? (locale === 'es' ? ' (Gerente)' : ' (Manager)') : ''}
                   </option>
                 ))}
               </select>

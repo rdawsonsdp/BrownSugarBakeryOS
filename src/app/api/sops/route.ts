@@ -168,6 +168,52 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
+  // Cascade: when assigned_staff_id changes, reassign today's pending task completions
+  if ('assigned_staff_id' in fields) {
+    const newStaffId = fields.assigned_staff_id as string | null
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' })
+
+    // Find task_templates linked to this SOP
+    const { data: templates } = await supabase
+      .from('task_templates')
+      .select('id')
+      .eq('sop_id', id)
+
+    if (templates && templates.length > 0) {
+      const templateIds = templates.map((t: { id: string }) => t.id)
+
+      // Find the new staff member's active shift for today (if reassigning to someone)
+      let newShiftId: string | null = null
+      if (newStaffId) {
+        const { data: shifts } = await supabase
+          .from('shifts')
+          .select('id')
+          .eq('staff_id', newStaffId)
+          .eq('shift_date', today)
+          .is('ended_at', null)
+          .limit(1)
+          .single()
+        newShiftId = shifts?.id || null
+      }
+
+      // Update pending task completions for today
+      const updatePayload: Record<string, unknown> = {
+        staff_id: newStaffId,
+        updated_at: new Date().toISOString(),
+      }
+      if (newShiftId) {
+        updatePayload.shift_id = newShiftId
+      }
+
+      await supabase
+        .from('task_completions')
+        .update(updatePayload)
+        .in('task_template_id', templateIds)
+        .eq('status', 'pending')
+        .gte('created_at', `${today}T00:00:00`)
+    }
+  }
+
   return NextResponse.json(data)
 }
 

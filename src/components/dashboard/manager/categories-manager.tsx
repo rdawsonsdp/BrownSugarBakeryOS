@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { GripVertical, Trash2, Plus } from 'lucide-react'
 import { useTranslations } from 'next-intl'
+import { useLocaleStore } from '@/lib/stores/locale-store'
 import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -25,6 +26,7 @@ interface EditableCategory {
 
 export function CategoriesManager({ open, onClose }: CategoriesManagerProps) {
   const t = useTranslations('common')
+  const { locale } = useLocaleStore()
   const { data: categories = [] } = useCategories()
   const createCategory = useCreateCategory()
   const updateCategory = useUpdateCategory()
@@ -152,7 +154,7 @@ export function CategoriesManager({ open, onClose }: CategoriesManagerProps) {
       <Dialog open={open} onClose={handleClose}>
         <DialogHeader>
           <DialogTitle>
-            Manage Categories
+            {locale === 'es' ? 'Administrar Categorías' : 'Manage Categories'}
           </DialogTitle>
         </DialogHeader>
         <DialogContent>
@@ -211,7 +213,9 @@ export function CategoriesManager({ open, onClose }: CategoriesManagerProps) {
         </DialogHeader>
         <DialogContent>
           <p className="text-sm text-brown/70">
-            Are you sure you want to remove this category? SOPs using it will keep their current category value.
+            {locale === 'es'
+              ? '¿Estás seguro de que quieres eliminar esta categoría? Las SOPs que la usan mantendrán su valor actual.'
+              : 'Are you sure you want to remove this category? SOPs using it will keep their current category value.'}
           </p>
         </DialogContent>
         <DialogFooter>
