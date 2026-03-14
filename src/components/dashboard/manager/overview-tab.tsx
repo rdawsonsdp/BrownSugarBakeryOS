@@ -1,7 +1,7 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
-import { useZones } from '@/lib/hooks/use-zones'
+import { useZones, useZoneRoles } from '@/lib/hooks/use-zones'
 import { useActiveShifts } from '@/lib/hooks/use-shift'
 import { useZoneStaff } from '@/lib/hooks/use-staff'
 import { useSOPs } from '@/lib/hooks/use-sops'
@@ -10,8 +10,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { getChicagoDate } from '@/lib/utils/timezone'
-import { useState, useCallback } from 'react'
-import { CheckCircle2, Circle, User, Plus, Edit2, ChevronDown, Printer, GripVertical, Trash2, RotateCcw } from 'lucide-react'
+import { useState, useCallback, useMemo } from 'react'
+import { CheckCircle2, Circle, User, Plus, Edit2, ChevronDown, Printer, GripVertical, Trash2, RotateCcw, RefreshCw } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 import { useLocaleStore } from '@/lib/stores/locale-store'
 import { useAuthStore } from '@/lib/stores/auth-store'
@@ -51,9 +51,11 @@ export function OverviewTab({ zoneId }: OverviewTabProps) {
   const zone = useAuthStore((s) => s.zone)
   const queryClient = useQueryClient()
   const { data: zones, isLoading: zonesLoading } = useZones()
-  const { data: activeShifts } = useActiveShifts()
+  const { data: activeShifts } = useActiveShifts(zoneId)
   const { data: zoneStaff } = useZoneStaff(zoneId)
   const { data: zoneSops } = useSOPs(zoneId)
+  const { data: zoneRoles } = useZoneRoles(zoneId || '')
+  const [refreshing, setRefreshing] = useState(false)
 
   // Quick-add state
   const [quickAddOpen, setQuickAddOpen] = useState(false)
@@ -162,7 +164,57 @@ export function OverviewTab({ zoneId }: OverviewTabProps) {
       if (error) throw error
       return data
     },
+    refetchInterval: 30_000, // Refresh every 30s as safety net
   })
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true)
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['all-completions-today'] }),
+      queryClient.invalidateQueries({ queryKey: ['active-shifts'] }),
+      queryClient.invalidateQueries({ queryKey: ['sops'] }),
+      queryClient.invalidateQueries({ queryKey: ['zone-staff'] }),
+    ])
+    // Brief delay so spinner is visible
+    setTimeout(() => setRefreshing(false), 500)
+  }, [queryClient])
+
+  // Build per-role slots for zone health card
+  const roleSlots = useMemo(() => {
+    if (!zoneRoles || !zoneId) return []
+
+    return zoneRoles
+      .filter((r) => !r.is_manager)
+      .sort((a, b) => (a.sort_order ?? 99) - (b.sort_order ?? 99))
+      .map((role) => {
+        // Find active shift for this role
+        const shift = activeShifts?.find(
+          (s: Record<string, unknown>) => s.role_id === role.id
+        )
+        const staffName = shift?.staff?.display_name || null
+
+        // Count completions for this shift
+        let completed = 0
+        let total = 0
+        if (shift && allCompletions) {
+          const shiftCompletions = allCompletions.filter(
+            (c: Record<string, unknown>) => c.shift_id === shift.id
+          )
+          total = shiftCompletions.length
+          completed = shiftCompletions.filter(
+            (c: Record<string, unknown>) => c.status === 'completed'
+          ).length
+        }
+
+        return {
+          roleId: role.id,
+          roleName: locale === 'es' ? role.name_es : role.name_en,
+          staffName,
+          completed,
+          total,
+        }
+      })
+  }, [zoneRoles, zoneId, activeShifts, allCompletions, locale])
 
   const handleQuickAdd = async () => {
     if (!quickAddName.trim() || !zoneId) return
@@ -276,9 +328,19 @@ export function OverviewTab({ zoneId }: OverviewTabProps) {
     <div className="space-y-6 p-4">
       {/* Zone Health Card */}
       <div>
-        <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-3">
-          {t('zoneHealth')}
-        </h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">
+            {t('zoneHealth')}
+          </h2>
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brown/5 text-brown/60 text-xs font-semibold hover:bg-brown/10 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={cn('w-3.5 h-3.5', refreshing && 'animate-spin')} />
+            {locale === 'es' ? 'Actualizar' : 'Refresh'}
+          </button>
+        </div>
         <div className="grid gap-3">
           {zoneStats.map(({ zone, total, completed, percent, staffCount }) => (
             <ZoneHealthCard
@@ -290,6 +352,7 @@ export function OverviewTab({ zoneId }: OverviewTabProps) {
               activeStaff={staffCount}
               totalTasks={total}
               completedTasks={completed}
+              roleSlots={zone.id === zoneId ? roleSlots : undefined}
             />
           ))}
         </div>

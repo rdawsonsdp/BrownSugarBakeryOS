@@ -129,6 +129,20 @@ export const useAuthStore = create<AuthState>()(
     {
       name: 'bakeryos-auth',
       version: 2,
+      migrate: (persisted, version) => {
+        // Clear stale state from older versions
+        if (version < 2) {
+          return {
+            staff: null,
+            zone: null,
+            role: null,
+            shift: null,
+            isAuthenticated: false,
+            lastActivity: Date.now(),
+          }
+        }
+        return persisted as Record<string, unknown>
+      },
       partialize: (state) => ({
         staff: state.staff,
         zone: state.zone,

@@ -18,7 +18,8 @@ export async function GET(request: NextRequest) {
     // Return all active staff (for login name selection)
     query = query.eq('is_active', true)
   } else if (zoneId) {
-    query = query.eq('zone_id', zoneId)
+    // Return active staff for this zone
+    query = query.eq('zone_id', zoneId).eq('is_active', true)
   } else {
     // Return all staff
   }

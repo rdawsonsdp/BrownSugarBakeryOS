@@ -47,6 +47,7 @@ export function useRealtimeAll() {
         { event: '*', schema: 'public', table: 'task_completions' },
         () => {
           queryClient.invalidateQueries({ queryKey: ['all-task-completions'] })
+          queryClient.invalidateQueries({ queryKey: ['all-completions-today'] })
           queryClient.invalidateQueries({ queryKey: ['task-completions'] })
         }
       )

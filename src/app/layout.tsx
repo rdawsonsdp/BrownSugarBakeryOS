@@ -4,6 +4,7 @@ import { NextIntlClientProvider } from 'next-intl'
 import { getLocale, getMessages } from 'next-intl/server'
 import { Providers } from './providers'
 import { UpdateBanner } from '@/components/layout/update-banner'
+import { Breadcrumbs } from '@/components/layout/breadcrumbs'
 import './globals.css'
 
 const arsenal = Arsenal({
@@ -56,6 +57,7 @@ export default async function RootLayout({
         <NextIntlClientProvider messages={messages}>
           <Providers>
             <UpdateBanner />
+            <Breadcrumbs />
             {children}
           </Providers>
         </NextIntlClientProvider>

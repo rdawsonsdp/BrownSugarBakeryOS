@@ -13,7 +13,7 @@ export function useActiveShifts(zoneId?: string) {
 
       let query = supabase
         .from('shifts')
-        .select('*, staff:staff(*)')
+        .select('*, staff:staff(*), role:roles(*)')
         .eq('shift_date', today)
         .is('ended_at', null)
 
