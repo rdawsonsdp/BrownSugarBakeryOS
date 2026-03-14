@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     // Get all draft assignments with staff assigned
     const { data: assignments, error: fetchError } = await supabase
       .from('day_assignments')
-      .select('*, role:roles(*), staff:staff(*)')
+      .select('*, role:roles(*), staff:staff!day_assignments_staff_id_fkey(*)')
       .eq('zone_id', zone_id)
       .eq('shift_date', today)
       .eq('shift_type', shiftType)
