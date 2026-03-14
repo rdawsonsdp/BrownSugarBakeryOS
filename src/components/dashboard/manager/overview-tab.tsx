@@ -370,7 +370,15 @@ export function OverviewTab({ zoneId }: OverviewTabProps) {
   const roleGroups: { roleLabel: string; staffId: string | null; sops: SOPWithSteps[] }[] = []
 
   if (zoneSops) {
-    const grouped = new Map<string, { label: string; staffId: string | null; sops: SOPWithSteps[] }>()
+    // Build role sort_order lookup
+    const roleSortOrder = new Map<string, number>()
+    if (zoneRoles) {
+      for (const r of zoneRoles) {
+        roleSortOrder.set(r.id, r.sort_order ?? 99)
+      }
+    }
+
+    const grouped = new Map<string, { label: string; staffId: string | null; roleOrder: number; sops: SOPWithSteps[] }>()
 
     for (const sop of zoneSops) {
       const key = sop.assigned_staff?.id || '__unassigned__'
@@ -380,18 +388,18 @@ export function OverviewTab({ zoneId }: OverviewTabProps) {
         ? `${realStaff.staffName} — ${placeholderName}`
         : placeholderName || (locale === 'es' ? 'Sin asignar' : 'Unassigned')
 
+      // Get role sort_order from role_sop_assignments
+      const roleId = sop.role_sop_assignments?.[0]?.role_id
+      const order = roleId ? (roleSortOrder.get(roleId) ?? 99) : 999
+
       if (!grouped.has(key)) {
-        grouped.set(key, { label, staffId: sop.assigned_staff?.id || null, sops: [] })
+        grouped.set(key, { label, staffId: sop.assigned_staff?.id || null, roleOrder: order, sops: [] })
       }
       grouped.get(key)!.sops.push(sop)
     }
 
     const entries = Array.from(grouped.values())
-    entries.sort((a, b) => {
-      if (a.staffId === null) return 1
-      if (b.staffId === null) return -1
-      return a.label.localeCompare(b.label)
-    })
+    entries.sort((a, b) => a.roleOrder - b.roleOrder)
 
     for (const entry of entries) {
       roleGroups.push({ roleLabel: entry.label, staffId: entry.staffId, sops: entry.sops })
