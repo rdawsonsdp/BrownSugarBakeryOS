@@ -88,22 +88,21 @@ export async function POST(request: NextRequest) {
         shiftsCreated++
       }
 
-      // Check if tasks already exist
-      const { count: existingTaskCount } = await supabase
+      // Clear any existing task completions so everyone starts fresh
+      await supabase
         .from('task_completions')
-        .select('*', { count: 'exact', head: true })
+        .delete()
         .eq('shift_id', shift.id)
 
-      if ((existingTaskCount ?? 0) === 0) {
-        await populateTasksForShift({
-          supabase,
-          shiftId: shift.id,
-          staffId,
-          zoneId: zone_id,
-          roleId,
-          shiftType,
-        })
-      }
+      // Populate fresh tasks for the shift
+      await populateTasksForShift({
+        supabase,
+        shiftId: shift.id,
+        staffId,
+        zoneId: zone_id,
+        roleId,
+        shiftType,
+      })
 
       // Log the session
       await supabase.from('login_sessions').insert({
