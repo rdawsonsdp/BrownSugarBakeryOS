@@ -5,13 +5,15 @@ import { useZones, useZoneRoles } from '@/lib/hooks/use-zones'
 import { useActiveShifts } from '@/lib/hooks/use-shift'
 import { useZoneStaff } from '@/lib/hooks/use-staff'
 import { useSOPs } from '@/lib/hooks/use-sops'
+import { useDayAssignments, useStartDay } from '@/lib/hooks/use-day-assignments'
 import { ZoneHealthCard } from './zone-health-card'
+import { AssignmentPlanner } from './assignment-planner'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { getChicagoDate } from '@/lib/utils/timezone'
 import { useState, useCallback, useMemo } from 'react'
-import { CheckCircle2, Circle, User, Plus, Edit2, ChevronDown, Printer, GripVertical, Trash2, RotateCcw, RefreshCw, StickyNote } from 'lucide-react'
+import { CheckCircle2, Circle, User, Plus, Edit2, ChevronDown, Printer, GripVertical, Trash2, RotateCcw, RefreshCw, StickyNote, Play, Loader2, UserCheck } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 import { useLocaleStore } from '@/lib/stores/locale-store'
 import { useAuthStore } from '@/lib/stores/auth-store'
@@ -49,13 +51,22 @@ export function OverviewTab({ zoneId }: OverviewTabProps) {
   const t = useTranslations('manager')
   const { locale } = useLocaleStore()
   const zone = useAuthStore((s) => s.zone)
+  const managerStaff = useAuthStore((s) => s.staff)
   const queryClient = useQueryClient()
   const { data: zones, isLoading: zonesLoading } = useZones()
   const { data: activeShifts } = useActiveShifts(zoneId)
   const { data: zoneStaff } = useZoneStaff(zoneId)
   const { data: zoneSops } = useSOPs(zoneId)
   const { data: zoneRoles } = useZoneRoles(zoneId || '')
+  const { data: dayAssignments } = useDayAssignments(zoneId)
+  const startDay = useStartDay()
+  const [dayStartedOverride, setDayStartedOverride] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
+  const [confirmStartOpen, setConfirmStartOpen] = useState(false)
+
+  // Check if the day has been started (any assignment marked 'started')
+  const dayStarted = dayStartedOverride || (dayAssignments?.some((a) => a.status === 'started') ?? false)
+  const assignedCount = dayAssignments?.filter((a) => a.staff_id).length ?? 0
 
   // Quick-add state
   const [quickAddOpen, setQuickAddOpen] = useState(false)
@@ -340,66 +351,92 @@ export function OverviewTab({ zoneId }: OverviewTabProps) {
     }
   }
 
+  const handleStartDay = () => {
+    if (!managerStaff || !zoneId) return
+    startDay.mutate(
+      { zone_id: zoneId, manager_staff_id: managerStaff.id },
+      {
+        onSuccess: () => {
+          setConfirmStartOpen(false)
+          setDayStartedOverride(true)
+          queryClient.invalidateQueries({ queryKey: ['day-assignments'] })
+          queryClient.invalidateQueries({ queryKey: ['active-shifts'] })
+          queryClient.invalidateQueries({ queryKey: ['all-completions-today'] })
+        },
+      }
+    )
+  }
+
   return (
     <div className="space-y-6 p-4">
-      {/* Zone Health Card */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">
-            {t('zoneHealth')}
-          </h2>
-          <button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brown/5 text-brown/60 text-xs font-semibold hover:bg-brown/10 transition-colors disabled:opacity-50"
-          >
-            <RefreshCw className={cn('w-3.5 h-3.5', refreshing && 'animate-spin')} />
-            {locale === 'es' ? 'Actualizar' : 'Refresh'}
-          </button>
-        </div>
-        <div className="grid gap-3">
-          {zoneStats.map(({ zone, total, completed, percent, staffCount }) => (
-            <ZoneHealthCard
-              key={zone.id}
-              zoneName_en={zone.name_en}
-              zoneName_es={zone.name_es}
-              zoneColor={zone.color}
-              completionPercent={percent}
-              activeStaff={staffCount}
-              totalTasks={total}
-              completedTasks={completed}
-              roleSlots={zone.id === zoneId ? roleSlots : undefined}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* Shift Notes from active shifts */}
-      {shiftNotes.length > 0 && (
-        <div>
-          <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-3">
-            <StickyNote className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />
-            {locale === 'es' ? 'Notas del Turno' : 'Shift Notes'}
-          </h2>
-          <div className="space-y-2">
-            {shiftNotes.map((note) => (
-              <div
-                key={note.id}
-                className="bg-white border border-brown/10 rounded-xl p-3"
-              >
-                <div className="flex items-center gap-2 mb-1.5">
-                  <span className="text-xs font-bold text-brown">{note.staffName}</span>
-                  <span className="text-[10px] text-brown/40">{note.roleName}</span>
-                  <span className="text-[10px] text-brown/30 capitalize ml-auto">{note.shiftType}</span>
-                </div>
-                <p className="text-sm text-brown/70 whitespace-pre-wrap">{note.notes}</p>
-              </div>
-            ))}
-          </div>
-        </div>
+      {/* Step 1: Role Assignments (shown before day starts) */}
+      {!dayStarted && zoneId && (
+        <AssignmentPlanner zoneId={zoneId} />
       )}
 
-      {/* Tasks organized by Role */}
+      {/* Zone Health Card (shown after day starts) */}
+      {dayStarted && (
+        <>
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">
+                {t('zoneHealth')}
+              </h2>
+              <button
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brown/5 text-brown/60 text-xs font-semibold hover:bg-brown/10 transition-colors disabled:opacity-50"
+              >
+                <RefreshCw className={cn('w-3.5 h-3.5', refreshing && 'animate-spin')} />
+                {locale === 'es' ? 'Actualizar' : 'Refresh'}
+              </button>
+            </div>
+            <div className="grid gap-3">
+              {zoneStats.map(({ zone, total, completed, percent, staffCount }) => (
+                <ZoneHealthCard
+                  key={zone.id}
+                  zoneName_en={zone.name_en}
+                  zoneName_es={zone.name_es}
+                  zoneColor={zone.color}
+                  completionPercent={percent}
+                  activeStaff={staffCount}
+                  totalTasks={total}
+                  completedTasks={completed}
+                  roleSlots={zone.id === zoneId ? roleSlots : undefined}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Shift Notes from active shifts */}
+          {shiftNotes.length > 0 && (
+            <div>
+              <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-3">
+                <StickyNote className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />
+                {locale === 'es' ? 'Notas del Turno' : 'Shift Notes'}
+              </h2>
+              <div className="space-y-2">
+                {shiftNotes.map((note) => (
+                  <div
+                    key={note.id}
+                    className="bg-white border border-brown/10 rounded-xl p-3"
+                  >
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span className="text-xs font-bold text-brown">{note.staffName}</span>
+                      <span className="text-[10px] text-brown/40">{note.roleName}</span>
+                      <span className="text-[10px] text-brown/30 capitalize ml-auto">{note.shiftType}</span>
+                    </div>
+                    <p className="text-sm text-brown/70 whitespace-pre-wrap">{note.notes}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Step 2: Tasks (shown when at least 1 person assigned OR day started) */}
+      {(assignedCount > 0 || dayStarted) && (
       <div>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">
@@ -537,6 +574,7 @@ export function OverviewTab({ zoneId }: OverviewTabProps) {
           <p className="text-sm text-text-muted text-center py-6">{locale === 'es' ? 'Aún no hay tareas' : 'No tasks yet'}</p>
         )}
       </div>
+      )}
 
       {/* SOP Editor Modal */}
       <Dialog open={editorOpen} onClose={() => { setEditorOpen(false); setEditingSOP(undefined) }} className="max-w-2xl max-h-[90vh]">
@@ -623,6 +661,76 @@ export function OverviewTab({ zoneId }: OverviewTabProps) {
           pageSize={printSize}
         />
       )}
+
+      {/* Step 3: Start Day button (shown before day starts, when at least 1 assigned) */}
+      {!dayStarted && assignedCount > 0 && (
+        <div className="pt-2 pb-4">
+          <Button
+            variant="primary"
+            className="w-full py-3 text-base font-bold"
+            onClick={() => setConfirmStartOpen(true)}
+          >
+            <Play className="w-5 h-5 mr-2" />
+            {locale === 'es'
+              ? `Comenzar el Día (${assignedCount} asignados)`
+              : `Start Day (${assignedCount} assigned)`}
+          </Button>
+        </div>
+      )}
+
+      {/* Start Day Confirmation */}
+      <Dialog open={confirmStartOpen} onClose={() => setConfirmStartOpen(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {locale === 'es' ? 'Comenzar el Día' : 'Start the Day'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-3 space-y-2">
+            <p className="text-sm text-brown/70">
+              {locale === 'es'
+                ? `Se crearán turnos y tareas para ${assignedCount} miembros del equipo:`
+                : `This will create shifts and tasks for ${assignedCount} team member${assignedCount !== 1 ? 's' : ''}:`}
+            </p>
+            <div className="space-y-1.5 pl-2">
+              {dayAssignments
+                ?.filter((a) => a.staff_id && a.staff)
+                .map((a) => (
+                  <div key={a.id} className="flex items-center gap-2 text-sm">
+                    <UserCheck className="w-3.5 h-3.5 text-success" />
+                    <span className="font-medium text-brown">{a.staff!.display_name}</span>
+                    <span className="text-brown/40">—</span>
+                    <span className="text-brown/60">
+                      {locale === 'es' ? a.role.name_es : a.role.name_en}
+                    </span>
+                  </div>
+                ))}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setConfirmStartOpen(false)}>
+              {locale === 'es' ? 'Cancelar' : 'Cancel'}
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleStartDay}
+              disabled={startDay.isPending}
+            >
+              {startDay.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                  {locale === 'es' ? 'Iniciando...' : 'Starting...'}
+                </>
+              ) : (
+                <>
+                  <Play className="w-4 h-4 mr-1" />
+                  {locale === 'es' ? 'Confirmar' : 'Confirm'}
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
@@ -667,12 +775,12 @@ function SortableTaskItem({
     opacity: isDragging ? 0.5 : 1,
   }
 
-  const completion = allCompletions?.find(
+  const isCompleted = allCompletions?.some(
     (c) =>
       c.task_template?.sop_id === sop.id &&
-      (!sop.assigned_staff_id || c.staff_id === sop.assigned_staff_id)
-  )
-  const isCompleted = completion?.status === 'completed'
+      (!sop.assigned_staff_id || c.staff_id === sop.assigned_staff_id) &&
+      c.status === 'completed'
+  ) || false
   const sopName = locale === 'es' ? sop.name_es : sop.name_en
   const assignedName = sop.assigned_staff?.display_name
   const isAssignOpen = assignOpenId === sop.id

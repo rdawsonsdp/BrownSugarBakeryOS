@@ -197,22 +197,43 @@ export default function LoginPage() {
       setVerifiedStaff(staff)
       selectByName(staff)
 
-      // Auto-start with last login context
-      if (lastLogin.staffId === staff.id && lastLogin.zoneId && lastLogin.roleId) {
-        track(EVENTS.QUICK_START_USED, { staffId: staff.id, roleName: lastLogin.roleName })
-        const success = await startShiftAndGo(staff, lastLogin.zoneId, lastLogin.roleId)
-        if (success) return true
-      }
-
-      // Manager auto-start
+      // Manager auto-start (managers always self-start)
       if (staff.role?.is_manager && staff.zone_id && staff.role_id) {
+        track(EVENTS.QUICK_START_USED, { staffId: staff.id, roleName: lastLogin.roleName })
         const success = await startShiftAndGo(staff, staff.zone_id, staff.role_id)
         if (success) return true
       }
 
-      // Fallback: role picker
+      // Staff: check day assignment status
+      if (staff.zone_id) {
+        try {
+          const statusRes = await fetch(`/api/day-status?zone_id=${staff.zone_id}&staff_id=${staff.id}`)
+          if (statusRes.ok) {
+            const dayStatus = await statusRes.json()
+
+            if (dayStatus.day_started && dayStatus.staff_assignment) {
+              track(EVENTS.QUICK_START_USED, { staffId: staff.id, roleName: dayStatus.staff_assignment.role_name_en })
+              const success = await startShiftAndGo(staff, staff.zone_id, dayStatus.staff_assignment.role_id)
+              if (success) return true
+            } else if (dayStatus.day_setup && !dayStatus.day_started) {
+              selectByName(staff)
+              setQuickStartPending(false)
+              setTimeout(() => router.push('/login/waiting?reason=not-started'), 300)
+              return true
+            } else if (dayStatus.day_started && !dayStatus.staff_assignment) {
+              selectByName(staff)
+              setQuickStartPending(false)
+              setTimeout(() => router.push('/login/waiting?reason=not-assigned'), 300)
+              return true
+            }
+          }
+        } catch { /* fall through */ }
+      }
+
+      // No day assignments — show waiting
+      selectByName(staff)
       setQuickStartPending(false)
-      setTimeout(() => router.push('/login/role'), 400)
+      setTimeout(() => router.push('/login/waiting?reason=not-started'), 300)
       return true
     } catch {
       setQuickStartPending(false)

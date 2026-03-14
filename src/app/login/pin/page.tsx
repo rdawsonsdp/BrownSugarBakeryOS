@@ -138,13 +138,37 @@ export default function LoginPinPage() {
         // Manager: auto-start shift, go straight to dashboard
         const success = await autoStartShift(data.staff)
         if (!success) {
-          // Fallback: go to role picker if auto-start fails
           setTimeout(() => router.push('/login/role'), 300)
         }
         return true
       } else {
-        // Staff: go to role picker (scoped to their zone)
-        setTimeout(() => router.push('/login/role'), 500)
+        // Staff: check if manager has assigned them a role for today
+        try {
+          const statusRes = await fetch(`/api/day-status?zone_id=${data.staff.zone_id}&staff_id=${data.staff.id}`)
+          if (statusRes.ok) {
+            const dayStatus = await statusRes.json()
+
+            if (dayStatus.day_started && dayStatus.staff_assignment) {
+              // Auto-start with manager-assigned role
+              const success = await autoStartShift({
+                ...data.staff,
+                role_id: dayStatus.staff_assignment.role_id,
+              })
+              if (success) return true
+            } else if (dayStatus.day_setup && !dayStatus.day_started) {
+              // Manager is still setting up
+              setTimeout(() => router.push('/login/waiting?reason=not-started'), 300)
+              return true
+            } else if (dayStatus.day_started && !dayStatus.staff_assignment) {
+              // Day started but staff not assigned
+              setTimeout(() => router.push('/login/waiting?reason=not-assigned'), 300)
+              return true
+            }
+          }
+        } catch { /* fall through to waiting */ }
+
+        // No day assignments exist yet — show waiting screen
+        setTimeout(() => router.push('/login/waiting?reason=not-started'), 300)
         return true
       }
     } catch {

@@ -65,6 +65,14 @@ export function useRealtimeAll() {
           queryClient.invalidateQueries({ queryKey: ['notifications'] })
         }
       )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'day_assignments' },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['day-assignments'] })
+          queryClient.invalidateQueries({ queryKey: ['day-status'] })
+        }
+      )
       .subscribe()
 
     return () => {
