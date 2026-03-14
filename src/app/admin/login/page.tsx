@@ -125,6 +125,14 @@ export default function AdminLoginPage() {
           </button>
         </form>
 
+        <button
+          type="button"
+          onClick={() => router.push('/admin/reset')}
+          className="block text-xs text-brown/40 hover:text-brown/60 transition-colors text-center mt-4 mx-auto"
+        >
+          {locale === 'es' ? '¿Olvidaste tu contraseña?' : 'Forgot password?'}
+        </button>
+
         <p className="text-[10px] text-brown/30 text-center mt-8">
           BakeryOS &middot; Brown Sugar Bakery
         </p>

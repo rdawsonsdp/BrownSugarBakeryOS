@@ -11,8 +11,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname()
   const { locale } = useLocaleStore()
 
-  // Don't wrap the login page with admin chrome
-  if (pathname === '/admin/login') {
+  // Don't wrap login/reset pages with admin chrome
+  if (pathname === '/admin/login' || pathname.startsWith('/admin/reset')) {
     return <>{children}</>
   }
 

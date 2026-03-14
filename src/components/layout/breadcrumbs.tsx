@@ -115,6 +115,14 @@ function buildCrumbs(
     ]
   }
 
+  if (pathname === '/admin/reset') {
+    return [
+      { label: t('Home', 'Inicio'), href: '/login' },
+      { label: t('Admin Login', 'Acceso admin'), href: '/admin/login' },
+      { label: t('Reset', 'Restablecer') },
+    ]
+  }
+
   if (pathname.startsWith('/admin/')) {
     const section = pathname.split('/')[2]
     const sections: Record<string, { en: string; es: string }> = {

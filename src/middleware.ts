@@ -28,7 +28,7 @@ export async function middleware(request: NextRequest) {
 
   // Protect /admin/* routes (except /admin/login)
   const { pathname } = request.nextUrl
-  if (pathname.startsWith('/admin') && pathname !== '/admin/login') {
+  if (pathname.startsWith('/admin') && pathname !== '/admin/login' && !pathname.startsWith('/admin/reset')) {
     if (!user) {
       const loginUrl = request.nextUrl.clone()
       loginUrl.pathname = '/admin/login'
