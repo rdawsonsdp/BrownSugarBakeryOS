@@ -11,7 +11,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { getChicagoDate } from '@/lib/utils/timezone'
 import { useState, useCallback, useMemo } from 'react'
-import { CheckCircle2, Circle, User, Plus, Edit2, ChevronDown, Printer, GripVertical, Trash2, RotateCcw, RefreshCw } from 'lucide-react'
+import { CheckCircle2, Circle, User, Plus, Edit2, ChevronDown, Printer, GripVertical, Trash2, RotateCcw, RefreshCw, StickyNote } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 import { useLocaleStore } from '@/lib/stores/locale-store'
 import { useAuthStore } from '@/lib/stores/auth-store'
@@ -216,6 +216,22 @@ export function OverviewTab({ zoneId }: OverviewTabProps) {
       })
   }, [zoneRoles, zoneId, activeShifts, allCompletions, locale])
 
+  // Build shift notes from active shifts
+  const shiftNotes = useMemo(() => {
+    if (!activeShifts) return []
+    return activeShifts
+      .filter((s: Record<string, unknown>) => s.notes)
+      .map((s: Record<string, unknown>) => ({
+        id: s.id as string,
+        staffName: (s.staff as Record<string, unknown>)?.display_name as string || '?',
+        roleName: locale === 'es'
+          ? ((s.role as Record<string, unknown>)?.name_es as string || '')
+          : ((s.role as Record<string, unknown>)?.name_en as string || ''),
+        notes: s.notes as string,
+        shiftType: s.shift_type as string,
+      }))
+  }, [activeShifts, locale])
+
   const handleQuickAdd = async () => {
     if (!quickAddName.trim() || !zoneId) return
     setQuickAddSaving(true)
@@ -357,6 +373,31 @@ export function OverviewTab({ zoneId }: OverviewTabProps) {
           ))}
         </div>
       </div>
+
+      {/* Shift Notes from active shifts */}
+      {shiftNotes.length > 0 && (
+        <div>
+          <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-3">
+            <StickyNote className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />
+            {locale === 'es' ? 'Notas del Turno' : 'Shift Notes'}
+          </h2>
+          <div className="space-y-2">
+            {shiftNotes.map((note) => (
+              <div
+                key={note.id}
+                className="bg-white border border-brown/10 rounded-xl p-3"
+              >
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="text-xs font-bold text-brown">{note.staffName}</span>
+                  <span className="text-[10px] text-brown/40">{note.roleName}</span>
+                  <span className="text-[10px] text-brown/30 capitalize ml-auto">{note.shiftType}</span>
+                </div>
+                <p className="text-sm text-brown/70 whitespace-pre-wrap">{note.notes}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Tasks organized by Role */}
       <div>
