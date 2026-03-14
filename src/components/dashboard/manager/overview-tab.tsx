@@ -243,6 +243,50 @@ export function OverviewTab({ zoneId }: OverviewTabProps) {
       }))
   }, [activeShifts, locale])
 
+  // Build mapping: role placeholder staff_id → real person staff_id via active shifts
+  const placeholderToRealStaff = useMemo(() => {
+    const map = new Map<string, string>()
+    if (!activeShifts || !zoneSops) return map
+
+    // roleId → real staff_id from active shifts
+    const roleToRealStaff = new Map<string, string>()
+    for (const shift of activeShifts) {
+      if (shift.role_id && shift.staff_id) {
+        roleToRealStaff.set(shift.role_id as string, shift.staff_id as string)
+      }
+    }
+
+    // placeholder staff_id → real staff_id via the placeholder's role_id
+    for (const sop of zoneSops) {
+      if (sop.assigned_staff?.id && sop.assigned_staff?.role_id) {
+        const realStaffId = roleToRealStaff.get(sop.assigned_staff.role_id)
+        if (realStaffId) {
+          map.set(sop.assigned_staff.id, realStaffId)
+        }
+      }
+    }
+
+    return map
+  }, [activeShifts, zoneSops])
+
+  // Build mapping: placeholder staff_id → real person display name
+  const placeholderToRealName = useMemo(() => {
+    const map = new Map<string, string>()
+    if (!activeShifts || !zoneSops) return map
+
+    for (const sop of zoneSops) {
+      const placeholderId = sop.assigned_staff?.id
+      if (!placeholderId) continue
+      const realStaffId = placeholderToRealStaff.get(placeholderId)
+      if (!realStaffId) continue
+      const shift = activeShifts.find((s) => (s.staff_id as string) === realStaffId)
+      const realName = (shift?.staff as Record<string, unknown>)?.display_name as string
+      if (realName) map.set(placeholderId, realName)
+    }
+
+    return map
+  }, [activeShifts, zoneSops, placeholderToRealStaff])
+
   const handleQuickAdd = async () => {
     if (!quickAddName.trim() || !zoneId) return
     setQuickAddSaving(true)
@@ -331,7 +375,11 @@ export function OverviewTab({ zoneId }: OverviewTabProps) {
 
     for (const sop of zoneSops) {
       const key = sop.assigned_staff?.id || '__unassigned__'
-      const label = sop.assigned_staff?.display_name || (locale === 'es' ? 'Sin asignar' : 'Unassigned')
+      const placeholderName = sop.assigned_staff?.display_name
+      const realName = sop.assigned_staff?.id ? placeholderToRealName.get(sop.assigned_staff.id) : undefined
+      const label = realName
+        ? `${realName} — ${placeholderName}`
+        : placeholderName || (locale === 'es' ? 'Sin asignar' : 'Unassigned')
 
       if (!grouped.has(key)) {
         grouped.set(key, { label, staffId: sop.assigned_staff?.id || null, sops: [] })
@@ -556,6 +604,7 @@ export function OverviewTab({ zoneId }: OverviewTabProps) {
                           sop={sop}
                           locale={locale}
                           allCompletions={allCompletions}
+                          placeholderToRealStaff={placeholderToRealStaff}
                           assignOpenId={assignOpenId}
                           setAssignOpenId={setAssignOpenId}
                           assignStaff={assignStaff}
@@ -740,6 +789,7 @@ interface SortableTaskItemProps {
   sop: SOPWithSteps
   locale: string
   allCompletions: Array<{ id: string; status: string; staff_id: string; task_template?: { sop_id?: string } }> | undefined
+  placeholderToRealStaff: Map<string, string>
   assignOpenId: string | null
   setAssignOpenId: (id: string | null) => void
   assignStaff: ReturnType<typeof useAssignSOPStaff>
@@ -752,6 +802,7 @@ function SortableTaskItem({
   sop,
   locale,
   allCompletions,
+  placeholderToRealStaff,
   assignOpenId,
   setAssignOpenId,
   assignStaff,
@@ -775,10 +826,14 @@ function SortableTaskItem({
     opacity: isDragging ? 0.5 : 1,
   }
 
+  // Resolve placeholder staff ID to real person's staff ID for matching
+  const realStaffId = sop.assigned_staff_id
+    ? placeholderToRealStaff.get(sop.assigned_staff_id) || sop.assigned_staff_id
+    : null
   const isCompleted = allCompletions?.some(
     (c) =>
       c.task_template?.sop_id === sop.id &&
-      (!sop.assigned_staff_id || c.staff_id === sop.assigned_staff_id) &&
+      (!realStaffId || c.staff_id === realStaffId) &&
       c.status === 'completed'
   ) || false
   const sopName = locale === 'es' ? sop.name_es : sop.name_en
