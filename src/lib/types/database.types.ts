@@ -177,6 +177,7 @@ export interface TaskCompletionWithTemplate extends TaskCompletion {
 export interface SOPWithSteps extends SOP {
   sop_steps: SOPStep[]
   assigned_staff?: { id: string; display_name: string; role_id: string } | null
+  role_sop_assignments?: { role_id: string }[]
 }
 
 export interface StaffWithRole extends Staff {

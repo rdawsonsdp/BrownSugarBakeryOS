@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
 
   let query = supabase
     .from('sops')
-    .select('*, sop_steps(*), assigned_staff:staff!sops_assigned_staff_id_fkey(id, display_name, role_id)')
+    .select('*, sop_steps(*), assigned_staff:staff!sops_assigned_staff_id_fkey(id, display_name, role_id), role_sop_assignments(role_id)')
     .order('sort_order', { ascending: true })
 
   if (library === 'true') {
