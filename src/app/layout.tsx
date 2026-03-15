@@ -51,7 +51,7 @@ export default async function RootLayout({
   return (
     <html lang={locale} suppressHydrationWarning>
       <head>
-        <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
       </head>
       <body className={`${arsenal.variable} ${notoSans.variable} min-h-dvh bg-cream text-brown antialiased`}>
         <NextIntlClientProvider messages={messages}>

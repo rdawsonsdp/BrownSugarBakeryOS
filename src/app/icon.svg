@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#6B0F2E"/>
+      <stop offset="100%" stop-color="#3D0718"/>
+    </linearGradient>
+  </defs>
+  <!-- Background circle -->
+  <circle cx="256" cy="256" r="256" fill="url(#bg)"/>
+  <!-- Factory gear/cog wheel -->
+  <g transform="translate(256,256)">
+    <!-- Outer gear teeth (12 teeth) -->
+    <path d="
+      M0,-155 L18,-155 L22,-130 L35,-128 L50,-148 L65,-140 L55,-118 L65,-108 L88,-118 L98,-105 L80,-88 L87,-76 L112,-78 L118,-62 L98,-50 L100,-37 L125,-28 L125,-10 L100,-8 L98,5 L120,18 L112,35 L88,25 L78,38 L92,60 L78,72 L60,52 L48,60 L52,85 L35,90 L28,65 L15,65 L10,90 L-10,90 L-15,65 L-28,65 L-35,90 L-52,85 L-48,60 L-60,52 L-78,72 L-92,60 L-78,38 L-88,25 L-112,35 L-120,18 L-98,5 L-100,-8 L-125,-10 L-125,-28 L-100,-37 L-98,-50 L-118,-62 L-112,-78 L-87,-76 L-80,-88 L-98,-105 L-88,-118 L-65,-108 L-55,-118 L-65,-140 L-50,-148 L-35,-128 L-22,-130 L-18,-155 Z
+    " fill="#D4A853" opacity="0.95"/>
+    <!-- Gear body (inner circle) -->
+    <circle cx="0" cy="0" r="95" fill="#C49A3C"/>
+    <!-- Center hole -->
+    <circle cx="0" cy="0" r="40" fill="url(#bg)"/>
+    <!-- Inner spokes -->
+    <rect x="-6" y="-85" width="12" height="170" rx="4" fill="#B8892F" opacity="0.5"/>
+    <rect x="-6" y="-85" width="12" height="170" rx="4" fill="#B8892F" opacity="0.5" transform="rotate(60)"/>
+    <rect x="-6" y="-85" width="12" height="170" rx="4" fill="#B8892F" opacity="0.5" transform="rotate(120)"/>
+    <!-- Center highlight -->
+    <circle cx="0" cy="0" r="38" fill="none" stroke="#D4A853" stroke-width="3" opacity="0.6"/>
+    <!-- Small center dot -->
+    <circle cx="0" cy="0" r="12" fill="#D4A853" opacity="0.8"/>
+  </g>
+  <!-- "OS" text at bottom -->
+  <text x="256" y="440" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="700" font-size="58" fill="#D4A853" letter-spacing="8" opacity="0.9">OS</text>
+</svg>
