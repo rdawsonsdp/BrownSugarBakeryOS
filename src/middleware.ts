@@ -26,15 +26,16 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
+  // TODO: Re-enable admin auth check when login is required
   // Protect /admin/* routes (except /admin/login)
-  const { pathname } = request.nextUrl
-  if (pathname.startsWith('/admin') && pathname !== '/admin/login' && !pathname.startsWith('/admin/reset')) {
-    if (!user) {
-      const loginUrl = request.nextUrl.clone()
-      loginUrl.pathname = '/admin/login'
-      return NextResponse.redirect(loginUrl)
-    }
-  }
+  // const { pathname } = request.nextUrl
+  // if (pathname.startsWith('/admin') && pathname !== '/admin/login' && !pathname.startsWith('/admin/reset')) {
+  //   if (!user) {
+  //     const loginUrl = request.nextUrl.clone()
+  //     loginUrl.pathname = '/admin/login'
+  //     return NextResponse.redirect(loginUrl)
+  //   }
+  // }
 
   return response
 }

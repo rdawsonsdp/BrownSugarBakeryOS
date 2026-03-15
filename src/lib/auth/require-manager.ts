@@ -7,26 +7,12 @@ type AuthFailure = { user: null; error: NextResponse }
 /**
  * Strict auth: requires Supabase Auth session (email/password login).
  * Use for admin-only operations like staff CRUD and analytics.
+ * TODO: Re-enable auth check when login is required.
  */
 export async function requireManager(): Promise<AuthSuccess | AuthFailure> {
-  const supabase = await createClient()
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser()
-
-  if (error || !user) {
-    return {
-      user: null,
-      error: NextResponse.json(
-        { error: 'Unauthorized — manager login required' },
-        { status: 401 }
-      ),
-    }
-  }
-
+  // Auth disabled — allow all requests through
   return {
-    user: { id: user.id, email: user.email ?? '' },
+    user: { id: 'anonymous', email: '' },
     error: null,
   }
 }
