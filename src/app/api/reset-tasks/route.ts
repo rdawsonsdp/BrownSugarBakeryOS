@@ -2,20 +2,27 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getChicagoDate, getChicagoHour } from '@/lib/utils/timezone'
 import { populateTasksForShift } from '@/lib/tasks/populate-tasks'
-import { requireManager } from '@/lib/auth/require-manager'
 
 export async function POST(request: NextRequest) {
-  const auth = await requireManager()
-  if (auth.error) return auth.error
-
   try {
-    const { zone_id } = await request.json()
+    const { zone_id, staff_id } = await request.json()
 
-    if (!zone_id) {
-      return NextResponse.json({ error: 'zone_id is required' }, { status: 400 })
+    if (!zone_id || !staff_id) {
+      return NextResponse.json({ error: 'zone_id and staff_id are required' }, { status: 400 })
     }
 
     const supabase = await createClient()
+
+    // Verify caller is a manager
+    const { data: callerStaff } = await supabase
+      .from('staff')
+      .select('*, role:roles(*)')
+      .eq('id', staff_id)
+      .single()
+
+    if (!callerStaff?.role?.is_manager) {
+      return NextResponse.json({ error: 'Only managers can reset tasks' }, { status: 403 })
+    }
     const today = getChicagoDate()
     const hour = getChicagoHour()
     const shiftType = hour < 11 ? 'opening' : hour < 15 ? 'mid' : 'closing'

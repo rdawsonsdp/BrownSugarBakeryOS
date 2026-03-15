@@ -685,8 +685,8 @@ export function OverviewTab({ zoneId }: OverviewTabProps) {
             variant="danger"
             disabled={resetTasks.isPending}
             onClick={() => {
-              if (!zoneId) return
-              resetTasks.mutate(zoneId, {
+              if (!zoneId || !managerStaff) return
+              resetTasks.mutate({ zoneId, staffId: managerStaff.id }, {
                 onSuccess: () => setResetConfirmOpen(false),
               })
             }}
