@@ -13,7 +13,7 @@ import { PinPad } from '@/components/pin/pin-pad'
 import { AppVersion } from '@/components/layout/app-version'
 import { track } from '@/lib/analytics/track'
 import { EVENTS } from '@/lib/analytics/events'
-import { Search, Loader2, Lock } from 'lucide-react'
+import { Search, Loader2, Lock, RefreshCw } from 'lucide-react'
 
 interface LastLogin {
   staffName: string
@@ -85,6 +85,25 @@ export default function LoginPage() {
     }, 1000)
     return () => clearInterval(interval)
   }, [locked])
+
+  // Check for app updates on login
+  const [updateAvailable, setUpdateAvailable] = useState(false)
+  useEffect(() => {
+    const clientBuildId = process.env.NEXT_PUBLIC_BUILD_ID || 'dev'
+    fetch('/api/version', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((server: { buildId?: string }) => {
+        if (server.buildId && server.buildId !== 'dev' && server.buildId !== clientBuildId) {
+          setUpdateAvailable(true)
+        }
+      })
+      .catch(() => { /* offline or error — skip */ })
+
+    // Also force service worker update check
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistration().then((r) => r?.update())
+    }
+  }, [])
 
   // Fetch all active staff
   const { data: staffList, isLoading: staffLoading } = useQuery<
@@ -413,6 +432,29 @@ export default function LoginPage() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Update banner */}
+        {updateAvailable && (
+          <div className="mx-4 mt-4 p-3 rounded-xl bg-gold/15 border border-gold/30 flex items-center justify-between">
+            <span className="text-xs font-semibold text-brown">
+              {locale === 'es' ? 'Nueva versión disponible' : 'A new version is available'}
+            </span>
+            <button
+              onClick={() => {
+                if ('serviceWorker' in navigator) {
+                  navigator.serviceWorker.getRegistration().then((r) => {
+                    if (r?.waiting) r.waiting.postMessage({ type: 'SKIP_WAITING' })
+                  })
+                }
+                window.location.reload()
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gold text-brown text-xs font-bold hover:bg-gold/80 transition-colors"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              {locale === 'es' ? 'Actualizar' : 'Update'}
+            </button>
+          </div>
+        )}
 
         {/* Version footer */}
         <div className="text-center pt-6 pb-4">
