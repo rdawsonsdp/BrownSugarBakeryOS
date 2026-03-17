@@ -156,7 +156,7 @@ export function TeamTab() {
               streak={member.streak_count}
               lastActive={shift ? formatRelative(shift.started_at) : undefined}
               overdueCount={stats?.overdue || 0}
-              roleName={member.role?.is_manager ? ts('roleManager') : ts('roleStaff')}
+              roleName={member.role?.name_en || (member.role?.is_manager ? ts('roleManager') : ts('roleStaff'))}
               isActive={member.is_active}
               onEdit={() => {
                 setEditingStaff({
@@ -188,6 +188,7 @@ export function TeamTab() {
         onSave={handleSave}
         staff={editingStaff}
         roles={roles ?? []}
+        zoneId={zone?.id}
         isLoading={createStaff.isPending || updateStaff.isPending}
       />
 

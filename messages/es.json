@@ -83,7 +83,7 @@
     "currentTasks": "Tareas Actuales",
     "library": "Biblioteca",
     "allTasks": "Todas las Tareas",
-    "zoneHealth": "Salud de Zona",
+    "zoneHealth": "Gestión de Turno",
     "completion": "{percent}% completado",
     "staffActive": "{count} activos",
     "alerts": "Alertas",

@@ -38,3 +38,20 @@ export function useZoneRoles(zoneId: string) {
     enabled: !!zoneId,
   })
 }
+
+export function useAllRoles() {
+  return useQuery({
+    queryKey: ['all-roles'],
+    queryFn: async () => {
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from('roles')
+        .select('*')
+        .eq('is_active', true)
+        .order('sort_order')
+
+      if (error) throw error
+      return data
+    },
+  })
+}

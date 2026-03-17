@@ -1,11 +1,11 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
-import { useZones, useZoneRoles } from '@/lib/hooks/use-zones'
+import { useZones, useZoneRoles, useAllRoles } from '@/lib/hooks/use-zones'
 import { useActiveShifts } from '@/lib/hooks/use-shift'
-import { useZoneStaff } from '@/lib/hooks/use-staff'
+import { useZoneStaff, useAllActiveStaff } from '@/lib/hooks/use-staff'
 import { useSOPs } from '@/lib/hooks/use-sops'
-import { useDayAssignments, useStartDay } from '@/lib/hooks/use-day-assignments'
+import { useDayAssignments, useStartDay, useAssignMidShift } from '@/lib/hooks/use-day-assignments'
 import { ZoneHealthCard } from './zone-health-card'
 import { AssignmentPlanner } from './assignment-planner'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -58,6 +58,9 @@ export function OverviewTab({ zoneId }: OverviewTabProps) {
   const { data: zoneStaff } = useZoneStaff(zoneId)
   const { data: zoneSops } = useSOPs(zoneId)
   const { data: zoneRoles } = useZoneRoles(zoneId || '')
+  const { data: allRoles } = useAllRoles()
+  const { data: allActiveShifts } = useActiveShifts()
+  const { data: allActiveStaff } = useAllActiveStaff()
   const { data: dayAssignments } = useDayAssignments(zoneId)
   const startDay = useStartDay()
   const [dayStartedOverride, setDayStartedOverride] = useState(false)
@@ -86,6 +89,8 @@ export function OverviewTab({ zoneId }: OverviewTabProps) {
   const reorderSOPs = useReorderSOPs()
   const deleteSOP = useDeleteSOP()
   const resetTasks = useResetTasks()
+  const assignMidShift = useAssignMidShift()
+  const [assigningRoleId, setAssigningRoleId] = useState<string | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<{ sop: SOPWithSteps } | null>(null)
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false)
 
@@ -239,6 +244,100 @@ export function OverviewTab({ zoneId }: OverviewTabProps) {
       })
   }, [zoneRoles, zoneId, activeShifts, allCompletions, locale])
 
+  // Build per-zone role slots for ALL zones (cross-zone visibility)
+  const allZoneRoleSlots = useMemo(() => {
+    if (!allRoles || !zones) return new Map<string, typeof roleSlots>()
+
+    const map = new Map<string, typeof roleSlots>()
+    for (const zone of zones) {
+      // Skip current zone — we already have roleSlots for it
+      if (zone.id === zoneId) continue
+
+      const zRoles = allRoles
+        .filter((r) => r.zone_id === zone.id && !r.is_manager)
+        .sort((a, b) => (a.sort_order ?? 99) - (b.sort_order ?? 99))
+
+      const slots = zRoles.map((role) => {
+        const shift = allActiveShifts?.find(
+          (s: Record<string, unknown>) => s.role_id === role.id
+        )
+        const staffName = shift
+          ? ((shift as Record<string, unknown>).staff as Record<string, unknown>)?.display_name as string || null
+          : null
+
+        let completed = 0
+        let total = 0
+        if (shift && allCompletions) {
+          const shiftCompletions = allCompletions.filter(
+            (c: Record<string, unknown>) => c.shift_id === (shift as Record<string, unknown>).id
+          )
+          total = shiftCompletions.length
+          completed = shiftCompletions.filter(
+            (c: Record<string, unknown>) => c.status === 'completed'
+          ).length
+        }
+
+        return {
+          roleId: role.id,
+          roleName: locale === 'es' ? role.name_es : role.name_en,
+          staffName,
+          completed,
+          total,
+        }
+      })
+
+      if (slots.length > 0) map.set(zone.id, slots)
+    }
+    return map
+  }, [allRoles, zones, zoneId, allActiveShifts, allCompletions, locale])
+
+  // Staff not currently in an active shift (available for mid-shift assignment)
+  const availableForAssignment = useMemo(() => {
+    if (!zoneStaff) return []
+    const activeStaffIds = new Set(
+      activeShifts?.map((s: Record<string, unknown>) => s.staff_id as string) ?? []
+    )
+    return zoneStaff.filter(
+      (s) => s.is_active && !s.role?.is_manager && !activeStaffIds.has(s.id)
+    )
+  }, [zoneStaff, activeShifts])
+
+  // All staff not in an active shift (for cross-zone assignment)
+  const allAvailableForAssignment = useMemo(() => {
+    if (!allActiveStaff) return []
+    const activeStaffIds = new Set(
+      allActiveShifts?.map((s: Record<string, unknown>) => s.staff_id as string) ?? []
+    )
+    return allActiveStaff.filter(
+      (s) => s.is_active && !s.role?.is_manager && !activeStaffIds.has(s.id)
+    )
+  }, [allActiveStaff, allActiveShifts])
+
+  const handleAssignMidShift = useCallback(
+    (roleId: string, staffId: string, targetZoneId?: string) => {
+      const assignZoneId = targetZoneId || zoneId
+      if (!assignZoneId || !managerStaff) return
+      setAssigningRoleId(roleId)
+      assignMidShift.mutate(
+        {
+          zone_id: assignZoneId,
+          role_id: roleId,
+          staff_id: staffId,
+          manager_staff_id: managerStaff.id,
+        },
+        {
+          onSettled: () => {
+            setAssigningRoleId(null)
+            // Refresh all-shifts data for cross-zone updates
+            queryClient.invalidateQueries({ queryKey: ['active-shifts'] })
+            queryClient.invalidateQueries({ queryKey: ['all-active-staff'] })
+          },
+        }
+      )
+    },
+    [zoneId, managerStaff, assignMidShift, queryClient]
+  )
+
   // Build shift notes from active shifts
   const shiftNotes = useMemo(() => {
     if (!activeShifts) return []
@@ -349,19 +448,23 @@ export function OverviewTab({ zoneId }: OverviewTabProps) {
     )
   }
 
-  // Filter to current zone only
+  // Show all active zones (current zone first)
   const currentZone = zones?.find((z) => z.id === zoneId)
-  const filteredZones = currentZone ? [currentZone] : zones || []
+  const allZones = zones || []
+  const sortedZones = currentZone
+    ? [currentZone, ...allZones.filter((z) => z.id !== zoneId)]
+    : allZones
 
   // Calculate per-zone stats
-  const zoneStats = filteredZones.map((zone) => {
+  const zoneStats = sortedZones.map((zone) => {
     const zoneCompletions = allCompletions?.filter(
       (c) => c.task_template?.zone_id === zone.id
     ) || []
     const total = zoneCompletions.length
     const completed = zoneCompletions.filter((c) => c.status === 'completed').length
     const percent = total === 0 ? 0 : Math.round((completed / total) * 100)
-    const staffCount = activeShifts?.filter((s) => s.zone_id === zone.id).length || 0
+    const staffCount = (zone.id === zoneId ? activeShifts : allActiveShifts)
+      ?.filter((s: Record<string, unknown>) => s.zone_id === zone.id).length || 0
 
     return { zone, total, completed, percent, staffCount }
   })
@@ -447,19 +550,29 @@ export function OverviewTab({ zoneId }: OverviewTabProps) {
               </button>
             </div>
             <div className="grid gap-3">
-              {zoneStats.map(({ zone, total, completed, percent, staffCount }) => (
-                <ZoneHealthCard
-                  key={zone.id}
-                  zoneName_en={zone.name_en}
-                  zoneName_es={zone.name_es}
-                  zoneColor={zone.color}
-                  completionPercent={percent}
-                  activeStaff={staffCount}
-                  totalTasks={total}
-                  completedTasks={completed}
-                  roleSlots={zone.id === zoneId ? roleSlots : undefined}
-                />
-              ))}
+              {zoneStats.map(({ zone, total, completed, percent, staffCount }) => {
+                const isCurrentZone = zone.id === zoneId
+                const slots = isCurrentZone ? roleSlots : allZoneRoleSlots.get(zone.id)
+                const staff = isCurrentZone ? availableForAssignment : allAvailableForAssignment
+                const zId = zone.id
+
+                return (
+                  <ZoneHealthCard
+                    key={zone.id}
+                    zoneName_en={zone.name_en}
+                    zoneName_es={zone.name_es}
+                    zoneColor={zone.color}
+                    completionPercent={percent}
+                    activeStaff={staffCount}
+                    totalTasks={total}
+                    completedTasks={completed}
+                    roleSlots={slots}
+                    availableStaff={staff}
+                    assigningRoleId={assigningRoleId}
+                    onAssignRole={(roleId, staffId) => handleAssignMidShift(roleId, staffId, zId)}
+                  />
+                )
+              })}
             </div>
           </div>
 

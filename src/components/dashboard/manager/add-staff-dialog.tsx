@@ -21,11 +21,12 @@ interface AddStaffDialogProps {
   onClose: () => void
   onSave: (data: StaffFormData & { pin?: string }) => void
   staff?: StaffFormData | null
-  roles: { id: string; name_en: string; name_es: string; slug: string; is_manager: boolean }[]
+  roles: { id: string; name_en: string; name_es: string; slug: string; is_manager: boolean; zone_id?: string }[]
+  zoneId?: string
   isLoading?: boolean
 }
 
-export function AddStaffDialog({ open, onClose, onSave, staff, roles, isLoading }: AddStaffDialogProps) {
+export function AddStaffDialog({ open, onClose, onSave, staff, roles, zoneId, isLoading }: AddStaffDialogProps) {
   const t = useTranslations('manager.staff')
 
   const [displayName, setDisplayName] = useState('')
@@ -104,8 +105,13 @@ export function AddStaffDialog({ open, onClose, onSave, staff, roles, isLoading 
     })
   }
 
-  const staffRole = roles.find((r) => !r.is_manager)
-  const managerRole = roles.find((r) => r.is_manager)
+  // Filter roles: current zone first, then other zones
+  const zoneRoles = zoneId
+    ? roles.filter((r) => r.zone_id === zoneId).sort((a, b) => (a.is_manager ? 1 : 0) - (b.is_manager ? 1 : 0))
+    : roles
+  const otherRoles = zoneId
+    ? roles.filter((r) => r.zone_id && r.zone_id !== zoneId && !r.is_manager)
+    : []
 
   return (
     <Dialog open={open} onClose={onClose}>
@@ -179,39 +185,48 @@ export function AddStaffDialog({ open, onClose, onSave, staff, roles, isLoading 
         </div>
         <p className="text-[10px] text-brown/40 -mt-2">{t('pinHint')}</p>
 
-        {/* Role selector */}
+        {/* Role selector — all roles */}
         <div>
           <label className="text-xs font-medium text-brown/60 mb-1 block">{t('role')}</label>
-          <div className="flex gap-2">
-            {staffRole && (
+          <div className="flex flex-wrap gap-2">
+            {zoneRoles.map((role) => (
               <button
+                key={role.id}
                 type="button"
-                onClick={() => setRoleId(staffRole.id)}
+                onClick={() => setRoleId(role.id)}
                 className={cn(
-                  'flex-1 h-10 rounded-xl text-sm font-medium transition-colors border',
-                  roleId === staffRole.id
+                  'px-3 h-9 rounded-xl text-sm font-medium transition-colors border',
+                  roleId === role.id
                     ? 'bg-brown text-cream border-brown'
                     : 'bg-white text-brown/60 border-brown/20 hover:border-brown/40'
                 )}
               >
-                {t('roleStaff')}
+                {role.name_en}
               </button>
-            )}
-            {managerRole && (
-              <button
-                type="button"
-                onClick={() => setRoleId(managerRole.id)}
-                className={cn(
-                  'flex-1 h-10 rounded-xl text-sm font-medium transition-colors border',
-                  roleId === managerRole.id
-                    ? 'bg-brown text-cream border-brown'
-                    : 'bg-white text-brown/60 border-brown/20 hover:border-brown/40'
-                )}
-              >
-                {t('roleManager')}
-              </button>
-            )}
+            ))}
           </div>
+          {otherRoles.length > 0 && (
+            <div className="mt-2">
+              <p className="text-[10px] text-brown/40 mb-1.5 uppercase tracking-wider">Other zones</p>
+              <div className="flex flex-wrap gap-2">
+                {otherRoles.map((role) => (
+                  <button
+                    key={role.id}
+                    type="button"
+                    onClick={() => setRoleId(role.id)}
+                    className={cn(
+                      'px-3 h-9 rounded-xl text-sm font-medium transition-colors border',
+                      roleId === role.id
+                        ? 'bg-brown text-cream border-brown'
+                        : 'bg-white text-brown/60 border-brown/20 hover:border-brown/40'
+                    )}
+                  >
+                    {role.name_en}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Language preference */}

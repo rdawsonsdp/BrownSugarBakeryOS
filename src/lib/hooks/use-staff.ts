@@ -36,6 +36,17 @@ export function useZoneStaff(zoneId?: string) {
   })
 }
 
+export function useAllActiveStaff() {
+  return useQuery<StaffMember[]>({
+    queryKey: ['all-active-staff'],
+    queryFn: async () => {
+      const res = await fetch('/api/staff?all_active=true')
+      if (!res.ok) throw new Error('Failed to fetch staff')
+      return res.json()
+    },
+  })
+}
+
 export function useCreateStaff() {
   const queryClient = useQueryClient()
   const zone = useAuthStore((s) => s.zone)

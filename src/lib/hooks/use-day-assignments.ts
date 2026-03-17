@@ -134,6 +134,36 @@ export function useStartDay() {
   })
 }
 
+export function useAssignMidShift() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (data: {
+      zone_id: string
+      role_id: string
+      staff_id: string
+      manager_staff_id: string
+    }) => {
+      const res = await fetch('/api/assign-mid-shift', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || 'Failed to assign role')
+      }
+      return res.json()
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['day-assignments', variables.zone_id] })
+      queryClient.invalidateQueries({ queryKey: ['active-shifts'] })
+      queryClient.invalidateQueries({ queryKey: ['all-completions-today'] })
+      queryClient.invalidateQueries({ queryKey: ['zone-staff'] })
+    },
+  })
+}
+
 export function useDayStarted(zoneId?: string) {
   const { data: assignments } = useDayAssignments(zoneId)
   return assignments?.some((a) => a.status === 'started') ?? false
